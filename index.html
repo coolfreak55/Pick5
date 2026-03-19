@@ -678,6 +678,7 @@
 <script>
 // ── Scores state (declared early to avoid reference errors) ──
 let scoresWeek = null;
+let scoresYear = null;
 let scoresRefreshTimer = null;
 
 const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRqX7XR41_5tR9RKRaMW7jokRKvxRCPtuxlSA5jUC8U9Btit3bq8G_K9EihipOzSGnwCVgmq8UHC3Hy/pub?gid=0&single=true&output=csv';
@@ -1088,16 +1089,41 @@ async function loadMyPicks() {
 function initScores() {
   const cur = getCurrentNFLWeek();
   scoresWeek = cur || 1;
+  // Default year: if we're Jan-Aug 2026, upcoming season is 2026; current season is 2025
+  const now = new Date();
+  scoresYear = now.getFullYear();
+  // NFL season year = the year the season starts (e.g. 2025 season = Sep 2025 - Jan 2026)
+  // If we're in Jan-Aug, the current season started last year
+  if (now.getMonth() < 8) scoresYear = scoresYear - 1;
+  updateScoresYearLabel();
   updateScoresWeekLabel();
   fetchScores();
   clearInterval(scoresRefreshTimer);
   scoresRefreshTimer = setInterval(fetchScores, 15 * 60 * 1000);
 }
 
+function updateScoresYearLabel() {
+  document.getElementById('scoresYearLabel').textContent = scoresYear;
+  // ESPN has NFL data back to ~2000, cap future at 1 year ahead
+  const now = new Date();
+  const maxYear = now.getMonth() >= 8 ? now.getFullYear() + 1 : now.getFullYear();
+  document.getElementById('yearPrev').disabled = scoresYear <= 2000;
+  document.getElementById('yearNext').disabled = scoresYear >= maxYear;
+}
+
+function changeScoresYear(dir) {
+  const now = new Date();
+  const maxYear = now.getMonth() >= 8 ? now.getFullYear() + 1 : now.getFullYear();
+  scoresYear = Math.min(maxYear, Math.max(2000, scoresYear + dir));
+  updateScoresYearLabel();
+  fetchScores();
+}
+
 function updateScoresWeekLabel() {
   document.getElementById('scoresWeekLabel').textContent = 'Week ' + scoresWeek;
   document.getElementById('weekPrev').disabled = scoresWeek <= 1;
   document.getElementById('weekNext').disabled = scoresWeek >= 18;
+  if (scoresYear) updateScoresYearLabel();
 }
 
 function changeScoresWeek(dir) {
@@ -1120,7 +1146,7 @@ async function fetchScores() {
   document.getElementById('scoresRefreshInfo').textContent = 'Last updated ' + timeStr + ' · Auto-refreshes every 15 min';
 
   try {
-    const url = 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week=' + scoresWeek + '&seasontype=2';
+    const url = 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week=' + scoresWeek + '&seasontype=2&season=' + scoresYear;
     const res  = await fetch(url);
     if (!res.ok) throw new Error('ESPN API error');
     const data = await res.json();
@@ -1224,10 +1250,17 @@ async function fetchScores() {
           <div class="page-divider"></div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;margin-top:4px;">
-          <div class="scores-week-nav">
-            <button class="week-nav-btn" id="weekPrev" onclick="changeScoresWeek(-1)">&#8592;</button>
-            <span class="week-nav-label" id="scoresWeekLabel">Week —</span>
-            <button class="week-nav-btn" id="weekNext" onclick="changeScoresWeek(1)">&#8594;</button>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <div class="scores-week-nav">
+              <button class="week-nav-btn" id="yearPrev" onclick="changeScoresYear(-1)">&#8592;</button>
+              <span class="week-nav-label" id="scoresYearLabel" style="min-width:52px;">——</span>
+              <button class="week-nav-btn" id="yearNext" onclick="changeScoresYear(1)">&#8594;</button>
+            </div>
+            <div class="scores-week-nav">
+              <button class="week-nav-btn" id="weekPrev" onclick="changeScoresWeek(-1)">&#8592;</button>
+              <span class="week-nav-label" id="scoresWeekLabel">Week —</span>
+              <button class="week-nav-btn" id="weekNext" onclick="changeScoresWeek(1)">&#8594;</button>
+            </div>
           </div>
           <div class="scores-refresh-info" id="scoresRefreshInfo">Refreshes every 15 min</div>
         </div>
