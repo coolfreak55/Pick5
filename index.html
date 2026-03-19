@@ -282,6 +282,27 @@
 
   .fade-in { animation: pageFade 0.35s ease forwards; }
 
+  .week-badge {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 15px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #0a0c10;
+    background: linear-gradient(135deg, var(--accent) 0%, #a07830 100%);
+    padding: 8px 18px;
+    border-radius: 4px;
+    white-space: nowrap;
+    box-shadow: 0 2px 12px rgba(200,169,74,0.3);
+    margin-top: 4px;
+  }
+  .week-offseason {
+    background: var(--surface);
+    color: var(--muted);
+    border: 1px solid var(--border);
+    box-shadow: none;
+  }
+
+
   /* ── MY PICKS PAGE ── */
   .placeholder-card {
     background: var(--surface);
@@ -350,9 +371,14 @@
 <div class="page with-nav" id="selectorPage">
   <div class="container">
     <div class="page-header">
-      <div class="page-title">Team Selector</div>
-      <div class="page-subtitle">Pick your five favorites</div>
-      <div class="page-divider"></div>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <div>
+          <div class="page-title">Team Selector</div>
+          <div class="page-subtitle">Pick your five favorites</div>
+          <div class="page-divider"></div>
+        </div>
+        <div class="week-badge" id="weekBadge">Week —</div>
+      </div>
     </div>
     <div class="selectors" id="selectors"></div>
     <div class="action-row">
@@ -392,6 +418,48 @@ const NFL_TEAMS = [
   "Seattle Seahawks","Tampa Bay Buccaneers","Tennessee Titans","Washington Commanders"
 ];
 const LABELS = ["Slot 01","Slot 02","Slot 03","Slot 04","Slot 05"];
+
+// ── NFL Week Detection (2025 season) ──
+const NFL_WEEKS = [
+  { week: 1,  start: new Date('2025-09-04'), end: new Date('2025-09-08') },
+  { week: 2,  start: new Date('2025-09-09'), end: new Date('2025-09-15') },
+  { week: 3,  start: new Date('2025-09-16'), end: new Date('2025-09-22') },
+  { week: 4,  start: new Date('2025-09-23'), end: new Date('2025-09-29') },
+  { week: 5,  start: new Date('2025-09-30'), end: new Date('2025-10-06') },
+  { week: 6,  start: new Date('2025-10-07'), end: new Date('2025-10-13') },
+  { week: 7,  start: new Date('2025-10-14'), end: new Date('2025-10-20') },
+  { week: 8,  start: new Date('2025-10-21'), end: new Date('2025-10-27') },
+  { week: 9,  start: new Date('2025-10-28'), end: new Date('2025-11-03') },
+  { week: 10, start: new Date('2025-11-04'), end: new Date('2025-11-10') },
+  { week: 11, start: new Date('2025-11-11'), end: new Date('2025-11-17') },
+  { week: 12, start: new Date('2025-11-18'), end: new Date('2025-11-24') },
+  { week: 13, start: new Date('2025-11-25'), end: new Date('2025-12-01') },
+  { week: 14, start: new Date('2025-12-02'), end: new Date('2025-12-08') },
+  { week: 15, start: new Date('2025-12-09'), end: new Date('2025-12-15') },
+  { week: 16, start: new Date('2025-12-16'), end: new Date('2025-12-22') },
+  { week: 17, start: new Date('2025-12-23'), end: new Date('2025-12-29') },
+  { week: 18, start: new Date('2025-12-30'), end: new Date('2026-01-04') },
+];
+
+function getCurrentNFLWeek() {
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const match = NFL_WEEKS.find(w => today >= w.start && today <= w.end);
+  return match ? match.week : null;
+}
+
+function updateWeekBadge() {
+  const badge = document.getElementById('weekBadge');
+  const week = getCurrentNFLWeek();
+  if (week) {
+    badge.textContent = 'Week ' + week;
+    badge.classList.remove('week-offseason');
+  } else {
+    badge.textContent = 'Off Season';
+    badge.classList.add('week-offseason');
+  }
+}
+
 
 // ── CSV Parser ──
 function parseCSV(text) {
@@ -465,6 +533,7 @@ function afterLogin(email) {
   document.getElementById('topNav').classList.add('visible');
   showPage('selector');
   buildSelectors();
+  updateWeekBadge();
 }
 
 // ── Page switching ──
@@ -588,10 +657,13 @@ async function showResults() {
   const date  = now.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
   const time  = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
+  const currentWeek = getCurrentNFLWeek();
+  const weekLabel = currentWeek ? 'Week ' + currentWeek : 'Off Season';
   const payload = {
     email: document.getElementById('navEmail').textContent,
     date,
     time,
+    week: weekLabel,
     pick1: picks[0] || '',
     pick2: picks[1] || '',
     pick3: picks[2] || '',
