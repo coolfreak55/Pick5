@@ -275,9 +275,12 @@ async function handleLogin() {
     const res = await fetch(SHEET_CSV_URL);
     if (!res.ok) throw new Error('Sheet unreachable');
     const text = await res.text();
+    console.log("RAW CSV:", text);
+    console.log("STATUS:", res.status);
     const rows = parseCSV(text);
     const dataRows = rows[0][0].toLowerCase().includes('email') ? rows.slice(1) : rows;
 
+    console.log("PARSED ROWS:", JSON.stringify(dataRows));
     const match = dataRows.find(r =>
       r[0] && r[0].toLowerCase() === email &&
       r[1] && r[1] === pin
