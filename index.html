@@ -863,13 +863,13 @@ async function loadMyPicks() {
 
     // Sort weeks: Week 1, Week 2, ... then anything else
     const sortedWeeks = Object.keys(grouped).sort((a, b) => {
-      const numA = parseInt(a.replace(/\D/g,'')) || 999;
-      const numB = parseInt(b.replace(/\D/g,'')) || 999;
-      return numA - numB;
+      const numA = parseInt(a.replace(/[^0-9]/g,'')) || 999;
+      const numB = parseInt(b.replace(/[^0-9]/g,'')) || 999;
+      return numB - numA;
     });
 
     sortedWeeks.forEach((week, wi) => {
-      const submissions = grouped[week];
+      const submissions = grouped[week].slice().reverse();
       const group = document.createElement('div');
       group.className = 'week-group';
       group.style.animationDelay = (wi * 0.08) + 's';
