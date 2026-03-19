@@ -138,7 +138,7 @@
   .container { width: 100%; max-width: 680px; }
 
   #loginPage  { display: flex; }
-  #selectorPage, #myPicksPage { display: none; }
+  #selectorPage, #myPicksPage, #scoresPage { display: none; }
 
   /* ── LOGIN ── */
   header { text-align: center; margin-bottom: 48px; }
@@ -281,6 +281,156 @@
   footer { margin-top: 40px; text-align: center; color: var(--muted); font-size: 13px; letter-spacing: 0.1em; opacity: 0; animation: fadeUp 0.5s 0.8s forwards; }
 
   .fade-in { animation: pageFade 0.35s ease forwards; }
+
+  /* ── SCORES PAGE ── */
+  .scores-week-nav {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 12px;
+  }
+  .week-nav-btn {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 3px;
+    transition: color 0.15s, background 0.15s;
+    letter-spacing: 0;
+  }
+  .week-nav-btn:hover { color: var(--accent); background: var(--hover); }
+  .week-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .week-nav-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    min-width: 80px;
+    text-align: center;
+  }
+  .scores-refresh-info {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-transform: uppercase;
+    text-align: right;
+  }
+  .scores-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 14px;
+  }
+  .score-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    opacity: 0;
+    animation: pageFade 0.4s ease forwards;
+    transition: border-color 0.2s;
+  }
+  .score-card:hover { border-color: #3a4555; }
+  .score-card.live { border-color: rgba(200,169,74,0.5); }
+
+  .score-card-header {
+    padding: 8px 14px;
+    background: rgba(255,255,255,0.03);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .game-status {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+  .game-status.live   { color: #4caf7d; }
+  .game-status.live::before { content: '● '; }
+  .game-status.final  { color: var(--muted); }
+  .game-status.scheduled { color: var(--muted); }
+
+  .game-network {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .score-card-body {
+    padding: 16px 14px;
+  }
+
+  .score-matchup {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .score-team {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .score-team-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--text);
+    flex: 1;
+  }
+  .score-team-name.winner { color: var(--accent); }
+
+  .score-team-record {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+
+  .score-points {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 0.05em;
+    color: var(--text);
+    min-width: 36px;
+    text-align: right;
+  }
+  .score-points.winner { color: var(--accent); }
+  .score-points.tbd { color: var(--muted); font-size: 18px; }
+
+  .score-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 2px 0;
+  }
+
+  .game-time-info {
+    margin-top: 10px;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    text-align: center;
+    text-transform: uppercase;
+  }
+
+  .scores-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+    font-size: 16px;
+    letter-spacing: 0.08em;
+  }
+  .scores-empty .icon { font-size: 40px; margin-bottom: 16px; }
+
 
   /* ── MY PICKS PAGE ── */
   .picks-loading {
@@ -444,6 +594,7 @@
   <div class="nav-links">
     <button class="nav-link active" id="navSelector" onclick="showPage('selector')">Team Selector</button>
     <button class="nav-link" id="navMyPicks" onclick="showPage('myPicks')">My Picks</button>
+    <button class="nav-link" id="navScores" onclick="showPage('scores')">Scores</button>
   </div>
   <div class="nav-right">
     <span class="nav-user">Signed in as <strong id="navEmail"></strong></span>
@@ -661,9 +812,12 @@ function afterLogin(email) {
 function showPage(page) {
   document.getElementById('selectorPage').style.display = 'none';
   document.getElementById('myPicksPage').style.display = 'none';
+  document.getElementById('scoresPage').style.display = 'none';
 
   document.getElementById('navSelector').classList.remove('active');
   document.getElementById('navMyPicks').classList.remove('active');
+  document.getElementById('navScores').classList.remove('active');
+  clearInterval(scoresRefreshTimer);
 
   if (page === 'selector') {
     const p = document.getElementById('selectorPage');
@@ -672,6 +826,14 @@ function showPage(page) {
     void p.offsetWidth; // reflow to re-trigger animation
     p.classList.add('fade-in');
     document.getElementById('navSelector').classList.add('active');
+  } else if (page === 'scores') {
+    const p = document.getElementById('scoresPage');
+    p.style.display = 'flex';
+    p.classList.remove('fade-in');
+    void p.offsetWidth;
+    p.classList.add('fade-in');
+    document.getElementById('navScores').classList.add('active');
+    initScores();
   } else if (page === 'myPicks') {
     const p = document.getElementById('myPicksPage');
     p.style.display = 'flex';
@@ -919,5 +1081,36 @@ async function loadMyPicks() {
 }
 
 </script>
+
+<!-- ═══ SCORES PAGE ═══ -->
+<div class="page with-nav" id="scoresPage">
+  <div class="container" style="max-width:860px;">
+    <div class="page-header">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <div>
+          <div class="page-title">NFL Scores</div>
+          <div class="page-subtitle">Live &amp; Final Results</div>
+          <div class="page-divider"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;margin-top:4px;">
+          <div class="scores-week-nav">
+            <button class="week-nav-btn" id="weekPrev" onclick="changeScoresWeek(-1)">&#8592;</button>
+            <span class="week-nav-label" id="scoresWeekLabel">Week —</span>
+            <button class="week-nav-btn" id="weekNext" onclick="changeScoresWeek(1)">&#8594;</button>
+          </div>
+          <div class="scores-refresh-info" id="scoresRefreshInfo">Refreshes every 15 min</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="scoresLoading" class="picks-loading">
+      <div class="loading-spinner"></div>
+      <p>Loading scores…</p>
+    </div>
+    <div id="scoresError" class="picks-error" style="display:none;"></div>
+    <div id="scoresGrid"></div>
+  </div>
+</div>
+
 </body>
 </html>
