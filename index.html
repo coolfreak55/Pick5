@@ -858,6 +858,11 @@
   }
   .team-pick-btn.dimmed .team-pick-spread { color: var(--muted); }
 
+  .spread-card.card-locked {
+    opacity: 0.3;
+    pointer-events: none;
+  }
+
   .spread-vs {
     display: flex;
     flex-direction: column;
@@ -1560,18 +1565,18 @@ async function submitSpreadsPicks() {
 
 // ── NFL Team Logos (ESPN CDN) ──
 function getTeamLogo(abbr) {
-  // ESPN team IDs for logo lookup
-  const ids = {
-    'ARI':'22','ATL':'1','BAL':'33','BUF':'2','CAR':'29','CHI':'3',
-    'CIN':'4','CLE':'5','DAL':'6','DEN':'7','DET':'8','GB':'9',
-    'HOU':'34','IND':'11','JAX':'30','KC':'12','LAC':'24','LAR':'14',
-    'LV':'13','MIA':'15','MIN':'16','NE':'17','NO':'18','NYG':'19',
-    'NYJ':'20','PHI':'21','PIT':'23','SF':'25','SEA':'26','TB':'27',
-    'TEN':'10','WSH':'28'
+  // Map abbr to ESPN's slug used in their public CDN
+  const slugs = {
+    'ARI':'ari','ATL':'atl','BAL':'bal','BUF':'buf','CAR':'car','CHI':'chi',
+    'CIN':'cin','CLE':'cle','DAL':'dal','DEN':'den','DET':'det','GB':'gb',
+    'HOU':'hou','IND':'ind','JAX':'jax','KC':'kc','LAC':'lac','LAR':'lar',
+    'LV':'lv','MIA':'mia','MIN':'min','NE':'ne','NO':'no','NYG':'nyg',
+    'NYJ':'nyj','PHI':'phi','PIT':'pit','SF':'sf','SEA':'sea','TB':'tb',
+    'TEN':'ten','WSH':'wsh'
   };
-  const id = ids[abbr.toUpperCase()];
-  if (!id) return '';
-  return 'https://a.espncdn.com/i/teamlogos/nfl/500-dark/scoreboard/' + id + '.png';
+  const slug = slugs[abbr.toUpperCase()];
+  if (!slug) return '';
+  return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/nfl/500/' + slug + '.png&w=40&h=40&transparent=true';
 }
 
 // ── Picks State ──
@@ -1610,20 +1615,33 @@ function showPicksWarning() {
 }
 
 function renderPickSelections() {
-  // Update all team buttons visually
-  document.querySelectorAll('.team-pick-btn').forEach(btn => {
-    const abbr     = btn.dataset.abbr;
-    const gameIdx  = btn.dataset.game;
-    const card     = document.querySelector('.spread-card[data-game="' + gameIdx + '"]');
-    const awayAbbr = card ? card.dataset.away : null;
-    const homeAbbr = card ? card.dataset.home : null;
-    const otherAbbr = abbr === awayAbbr ? homeAbbr : awayAbbr;
+  const maxReached = selectedPicks.length >= 5;
 
-    const isSelected = selectedPicks.includes(abbr);
-    const otherSelected = otherAbbr && selectedPicks.includes(otherAbbr);
+  document.querySelectorAll('.spread-card').forEach(card => {
+    const gameIdx  = card.dataset.game;
+    const awayAbbr = card.dataset.away;
+    const homeAbbr = card.dataset.home;
+    const gameHasPick = selectedPicks.includes(awayAbbr) || selectedPicks.includes(homeAbbr);
 
-    btn.classList.toggle('selected', isSelected);
-    btn.classList.toggle('dimmed', otherSelected && !isSelected);
+    // Grey out entire card if 5 picked and this game has no pick
+    card.classList.toggle('card-locked', maxReached && !gameHasPick);
+
+    card.querySelectorAll('.team-pick-btn').forEach(btn => {
+      const abbr = btn.dataset.abbr;
+      const isSelected = selectedPicks.includes(abbr);
+      const otherAbbr = abbr === awayAbbr ? homeAbbr : awayAbbr;
+      const otherSelected = selectedPicks.includes(otherAbbr);
+
+      // Reset all classes first
+      btn.classList.remove('selected', 'dimmed');
+
+      if (isSelected) {
+        btn.classList.add('selected');
+      } else if (otherSelected) {
+        btn.classList.add('dimmed');
+      }
+      // If max reached and this game has no pick, pointer-events handled by card-locked
+    });
   });
 }
 
@@ -2214,6 +2232,6 @@ async function loadAdminSpreadsWeek() {
   </div>
 </div>
 
-<div class="version-badge">v0.5.4</div>
+<div class="version-badge">v0.5.5</div>
 </body>
 </html>
