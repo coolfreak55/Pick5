@@ -1002,7 +1002,7 @@ async function loadMyPicks() {
   groupsEl.innerHTML      = '';
 
   try {
-    const res = await fetch(PICKS_DB_URL);
+    const res = await fetch(PICKS_DB_URL + '&cachebust=' + Date.now());
     if (!res.ok) throw new Error('Could not load picks.');
     const text = await res.text();
     const rows = parseCSV(text);
