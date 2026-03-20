@@ -1072,7 +1072,7 @@ function afterLogin(email) {
   document.getElementById('loginPage').style.display = 'none';
   document.getElementById('topNav').classList.add('visible');
   // Show admin button if admin
-  if (ADMIN_EMAILS.includes(email.toLowerCase())) {
+  if (email && ADMIN_EMAILS && ADMIN_EMAILS.includes(email.toLowerCase())) {
     document.getElementById('adminCorner').style.display = 'block';
   }
   showPage('selector');
@@ -1623,8 +1623,15 @@ function setAdminStatus(msg, type) {
 
 // ── Spreads ──
 async function loadSpreadsOnHomePage() {
+  // Wait up to 3 seconds for Firebase module to be ready
+  let attempts = 0;
+  while (!window.fbGetSpreadsWeek && attempts < 15) {
+    await new Promise(r => setTimeout(r, 200));
+    attempts++;
+  }
   try {
     const week = window.fbGetSpreadsWeek ? await window.fbGetSpreadsWeek() : null;
+    console.log('SPREADS week from Firebase:', week);
     if (!week) {
       document.getElementById('spreadsSection').style.display = 'none';
       return;
