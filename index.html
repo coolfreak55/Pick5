@@ -600,6 +600,48 @@
     pointer-events: none;
   }
 </style>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, query, where, getDocs, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyC6wED6bBvMNGiQFFEGHdQGSP7iKGSIdvk",
+    authDomain: "pick5-ee939.firebaseapp.com",
+    projectId: "pick5-ee939",
+    storageBucket: "pick5-ee939.firebasestorage.app",
+    messagingSenderId: "500344470484",
+    appId: "1:500344470484:web:37c87140d75e04c7ec7441"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+
+  // Expose to global scope so non-module scripts can call them
+  window.fbSavePick = async function(payload) {
+    await addDoc(collection(db, "picks"), {
+      email:  payload.email,
+      date:   payload.date,
+      time:   payload.time,
+      week:   payload.week,
+      pick1:  payload.pick1 || '',
+      pick2:  payload.pick2 || '',
+      pick3:  payload.pick3 || '',
+      pick4:  payload.pick4 || '',
+      pick5:  payload.pick5 || '',
+      timestamp: Date.now()
+    });
+  };
+
+  window.fbGetMyPicks = async function(email) {
+    const q = query(
+      collection(db, "picks"),
+      where("email", "==", email.toLowerCase()),
+      orderBy("timestamp", "desc")
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(d => d.data());
+  };
+</script>
 </head>
 <body>
 
@@ -956,11 +998,10 @@ async function showResults() {
   });
   banner.classList.add('show');
 
-  // Save to Google Sheet
+  // Build payload
   const now   = new Date();
   const date  = now.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
   const time  = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
   const currentWeek = getCurrentNFLWeek();
   const weekLabel = currentWeek ? 'Week ' + currentWeek : 'Off Season';
   const payload = {
@@ -979,12 +1020,16 @@ async function showResults() {
   submitBtn.textContent = 'Saving…';
 
   try {
-    await fetch(PICKS_SCRIPT_URL, {
+    // Save to Firebase (primary) and Google Sheets (backup) in parallel
+    const fbPromise = window.fbSavePick ? window.fbSavePick(payload) : Promise.resolve();
+    const sheetPromise = fetch(PICKS_SCRIPT_URL, {
       method: 'POST',
       mode: 'no-cors',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
+    await Promise.all([fbPromise, sheetPromise]);
+
     submitBtn.textContent = 'Picks Saved ✓';
     submitBtn.style.background = 'linear-gradient(135deg, #4caf7d 0%, #2e7d52 100%)';
     setTimeout(() => {
@@ -1006,7 +1051,7 @@ async function showResults() {
 
 // ── My Picks Loader ──
 async function loadMyPicks() {
-  const email = document.getElementById('navEmail').textContent.toLowerCase();
+  const email     = document.getElementById('navEmail').textContent.toLowerCase();
   const loadingEl = document.getElementById('picksLoading');
   const errorEl   = document.getElementById('picksError');
   const groupsEl  = document.getElementById('picksGroups');
@@ -1016,65 +1061,56 @@ async function loadMyPicks() {
   groupsEl.innerHTML      = '';
 
   try {
-    const res = await fetch(PICKS_DB_URL + '&cachebust=' + Date.now());
-    if (!res.ok) throw new Error('Could not load picks.');
-    const text = await res.text();
-    const rows = parseCSV(text);
-
-    // Skip header row
-    const dataRows = rows[0][0].toLowerCase().includes('email') ? rows.slice(1) : rows;
-
-    // Filter to current user's rows
-    // Columns: Email(0), Date(1), Time(2), Week(3), Pick1(4), Pick2(5), Pick3(6), Pick4(7), Pick5(8)
-    const myRows = dataRows.filter(r => r[0] && r[0].toLowerCase() === email);
+    // Read from Firebase — always fresh, no caching
+    if (!window.fbGetMyPicks) throw new Error('Firebase not ready');
+    const myDocs = await window.fbGetMyPicks(email);
 
     loadingEl.style.display = 'none';
 
-    if (myRows.length === 0) {
+    if (myDocs.length === 0) {
       groupsEl.innerHTML = '<div class="picks-empty"><div class="icon">📋</div><p>No picks submitted yet.</p></div>';
       return;
     }
 
-    // Group by week
+    // Group by week (already sorted desc by timestamp from Firebase query)
     const grouped = {};
-    myRows.forEach(r => {
-      const week = r[3] || 'Unknown Week';
-      if (!grouped[week]) grouped[week] = [];
-      grouped[week].push(r);
+    const weekOrder = [];
+    myDocs.forEach(doc => {
+      const week = doc.week || 'Unknown Week';
+      if (!grouped[week]) { grouped[week] = []; weekOrder.push(week); }
+      grouped[week].push(doc);
     });
 
-    // Sort weeks: Week 1, Week 2, ... then anything else
-    const sortedWeeks = Object.keys(grouped).sort((a, b) => {
-      const numA = parseInt(a.replace(/[^0-9]/g,'')) || 999;
-      const numB = parseInt(b.replace(/[^0-9]/g,'')) || 999;
-      return numB - numA;
-    });
+    // Dedupe week order while preserving first-seen order (latest first)
+    const sortedWeeks = [...new Set(weekOrder)];
 
     sortedWeeks.forEach((week, wi) => {
-      const submissions = grouped[week].slice().reverse();
+      const submissions = grouped[week];
       const group = document.createElement('div');
       group.className = 'week-group';
       group.style.animationDelay = (wi * 0.08) + 's';
 
       const header = document.createElement('div');
       header.className = 'week-group-header';
-      header.innerHTML = `
-        <span class="week-group-title">${week}</span>
-        <span class="week-group-count">${submissions.length} submission${submissions.length !== 1 ? 's' : ''}</span>
-      `;
+      const titleEl = document.createElement('span');
+      titleEl.className = 'week-group-title';
+      titleEl.textContent = week;
+      const countEl = document.createElement('span');
+      countEl.className = 'week-group-count';
+      countEl.textContent = submissions.length + ' submission' + (submissions.length !== 1 ? 's' : '');
+      header.appendChild(titleEl);
+      header.appendChild(countEl);
       group.appendChild(header);
 
-      submissions.forEach(row => {
-        const date  = row[1] || '';
-        const time  = row[2] || '';
-        const picks = [row[4], row[5], row[6], row[7], row[8]].filter(p => p && p.trim());
+      submissions.forEach(doc => {
+        const picks = [doc.pick1, doc.pick2, doc.pick3, doc.pick4, doc.pick5].filter(p => p && p.trim());
 
         const sub = document.createElement('div');
         sub.className = 'picks-submission';
 
         const meta = document.createElement('div');
         meta.className = 'submission-meta';
-        meta.textContent = [date, time].filter(Boolean).join(' · ');
+        meta.textContent = [doc.date, doc.time].filter(Boolean).join(' · ');
         sub.appendChild(meta);
 
         const chipsEl = document.createElement('div');
@@ -1082,7 +1118,11 @@ async function loadMyPicks() {
         picks.forEach((pick, pi) => {
           const chip = document.createElement('div');
           chip.className = 'pick-chip';
-          chip.innerHTML = `<span class="pick-num">${pi + 1}</span>${pick}`;
+          const numEl = document.createElement('span');
+          numEl.className = 'pick-num';
+          numEl.textContent = pi + 1;
+          chip.appendChild(numEl);
+          chip.appendChild(document.createTextNode(pick));
           chipsEl.appendChild(chip);
         });
         sub.appendChild(chipsEl);
