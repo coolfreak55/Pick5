@@ -585,6 +585,20 @@
     margin-bottom: 12px;
   }
   .placeholder-card p { font-size: 16px; color: var(--muted); letter-spacing: 0.05em; line-height: 1.6; }
+
+  /* ── VERSION BADGE ── */
+  .version-badge {
+    position: fixed;
+    bottom: 12px;
+    right: 16px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    opacity: 0.5;
+    z-index: 999;
+    pointer-events: none;
+  }
 </style>
 </head>
 <body>
@@ -1323,5 +1337,6 @@ async function fetchScores() {
   </div>
 </div>
 
+<div class="version-badge">v0.5</div>
 </body>
 </html>
