@@ -1648,7 +1648,11 @@ async function fetchAndRenderSpreads(week) {
     const res = await fetch(SPREADS_CSV_URL + '&cachebust=' + Date.now());
     if (!res.ok) throw new Error('Sheet unreachable');
     const text = await res.text();
+    console.log('SPREADS RAW (first 500 chars):', text.substring(0, 500));
     const rows = parseCSV(text);
+    console.log('SPREADS TOTAL ROWS:', rows.length);
+    console.log('SPREADS HEADER ROW:', rows[0]);
+    console.log('SPREADS FIRST DATA ROW:', rows[1]);
 
     // Columns: Week(0), Date(1), Time(2), Home Team(3), Away Team(4), Odds(5)
     // Skip header row
@@ -1656,7 +1660,10 @@ async function fetchAndRenderSpreads(week) {
 
     // Filter to selected week — sheet has "Week 1", "Week 2" etc.
     const weekLabel = 'Week ' + week;
+    console.log('SPREADS looking for week label:', weekLabel);
+    console.log('SPREADS unique weeks found:', [...new Set(dataRows.map(r => r[0]))]);
     const weekRows = dataRows.filter(r => r[0] && r[0].trim().toLowerCase() === weekLabel.toLowerCase());
+    console.log('SPREADS matching rows:', weekRows.length);
 
     if (weekRows.length === 0) {
       section.style.display = 'none';
