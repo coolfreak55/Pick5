@@ -1190,7 +1190,10 @@
     await addDoc(collection(db, "picks"), {
       email: payload.email, date: payload.date, time: payload.time, week: payload.week,
       pick1: payload.pick1 || '', pick2: payload.pick2 || '', pick3: payload.pick3 || '',
-      pick4: payload.pick4 || '', pick5: payload.pick5 || '', timestamp: Date.now()
+      pick4: payload.pick4 || '', pick5: payload.pick5 || '',
+      spread1: payload.spread1 || '', spread2: payload.spread2 || '', spread3: payload.spread3 || '',
+      spread4: payload.spread4 || '', spread5: payload.spread5 || '',
+      timestamp: Date.now()
     });
   };
 
@@ -1424,21 +1427,25 @@ function logout() {
 
 // ── Picks: toggle, render, counter ──
 function togglePick(abbr, gameIdx) {
-  const card     = document.querySelector('.spread-card[data-game="' + gameIdx + '"]');
-  const awayAbbr = card ? card.dataset.away : null;
-  const homeAbbr = card ? card.dataset.home : null;
+  const card      = document.querySelector('.spread-card[data-game="' + gameIdx + '"]');
+  const awayAbbr  = card ? card.dataset.away : null;
+  const homeAbbr  = card ? card.dataset.home : null;
   const otherAbbr = abbr === awayAbbr ? homeAbbr : awayAbbr;
-  const alreadyIdx = selectedPicks.indexOf(abbr);
+
+  // Get spread from the button's data attribute
+  const btn    = card ? card.querySelector('.team-pick-btn[data-abbr="' + abbr + '"]') : null;
+  const spread = btn ? (btn.dataset.spread || '') : '';
+
+  const alreadyIdx = selectedPicks.findIndex(p => p.abbr === abbr);
 
   if (alreadyIdx >= 0) {
     selectedPicks.splice(alreadyIdx, 1);
   } else {
-    if (otherAbbr) {
-      const otherIdx = selectedPicks.indexOf(otherAbbr);
-      if (otherIdx >= 0) selectedPicks.splice(otherIdx, 1);
-    }
+    // Remove other team from this game if already selected
+    const otherIdx = selectedPicks.findIndex(p => p.abbr === otherAbbr);
+    if (otherIdx >= 0) selectedPicks.splice(otherIdx, 1);
     if (selectedPicks.length >= 5) { showPicksWarning(); return; }
-    selectedPicks.push(abbr);
+    selectedPicks.push({ abbr, spread });
   }
   renderPickSelections();
   updatePicksCounter();
@@ -1456,14 +1463,14 @@ function renderPickSelections() {
   document.querySelectorAll('.spread-card').forEach(card => {
     const awayAbbr   = card.dataset.away;
     const homeAbbr   = card.dataset.home;
-    const gameHasPick = selectedPicks.includes(awayAbbr) || selectedPicks.includes(homeAbbr);
+    const gameHasPick = selectedPicks.some(p => p.abbr === awayAbbr) || selectedPicks.some(p => p.abbr === homeAbbr);
     card.classList.toggle('card-locked', maxReached && !gameHasPick);
 
     card.querySelectorAll('.team-pick-btn').forEach(btn => {
       const abbr      = btn.dataset.abbr;
       const otherAbbr = abbr === awayAbbr ? homeAbbr : awayAbbr;
-      const isSelected   = selectedPicks.includes(abbr);
-      const otherSelected = selectedPicks.includes(otherAbbr);
+      const isSelected   = selectedPicks.some(p => p.abbr === abbr);
+      const otherSelected = selectedPicks.some(p => p.abbr === otherAbbr);
 
       // Force full reset via attribute
       btn.removeAttribute('data-state');
@@ -1519,9 +1526,16 @@ async function submitSpreadsPicks() {
   const payload = {
     email: document.getElementById('navEmail').textContent,
     date, time, week: weekLabel,
-    pick1: selectedPicks[0] || '', pick2: selectedPicks[1] || '',
-    pick3: selectedPicks[2] || '', pick4: selectedPicks[3] || '',
-    pick5: selectedPicks[4] || ''
+    pick1: selectedPicks[0] ? selectedPicks[0].abbr : '',
+    pick2: selectedPicks[1] ? selectedPicks[1].abbr : '',
+    pick3: selectedPicks[2] ? selectedPicks[2].abbr : '',
+    pick4: selectedPicks[3] ? selectedPicks[3].abbr : '',
+    pick5: selectedPicks[4] ? selectedPicks[4].abbr : '',
+    spread1: selectedPicks[0] ? selectedPicks[0].spread : '',
+    spread2: selectedPicks[1] ? selectedPicks[1].spread : '',
+    spread3: selectedPicks[2] ? selectedPicks[2].spread : '',
+    spread4: selectedPicks[3] ? selectedPicks[3].spread : '',
+    spread5: selectedPicks[4] ? selectedPicks[4].spread : ''
   };
 
   try {
@@ -1623,6 +1637,7 @@ async function fetchAndRenderSpreads(week) {
       awayBtn.dataset.abbr = away;
       awayBtn.dataset.game = i;
       awayBtn.setAttribute('data-state', 'idle');
+      awayBtn.dataset.spread = awaySpread || '';
       awayBtn.onclick = () => togglePick(away, i);
       awayBtn.innerHTML = (awayLogo ? '<img class="team-logo" src="' + awayLogo + '" alt="' + away + '">' : '') +
         '<div class="team-pick-info"><div class="team-pick-abbr">' + away + '</div>' +
@@ -1639,6 +1654,7 @@ async function fetchAndRenderSpreads(week) {
       homeBtn.dataset.abbr = home;
       homeBtn.dataset.game = i;
       homeBtn.setAttribute('data-state', 'idle');
+      homeBtn.dataset.spread = homeSpread || '';
       homeBtn.onclick = () => togglePick(home, i);
       homeBtn.innerHTML = (homeLogo ? '<img class="team-logo" src="' + homeLogo + '" alt="' + home + '">' : '') +
         '<div class="team-pick-info"><div class="team-pick-abbr">' + home + '</div>' +
@@ -1714,6 +1730,7 @@ async function loadMyPicks() {
         sub.appendChild(meta);
         const chipsEl = document.createElement('div');
         chipsEl.className = 'submission-picks';
+        const spreadFields = [doc.spread1, doc.spread2, doc.spread3, doc.spread4, doc.spread5];
         picks.forEach((pick, pi) => {
           const chip = document.createElement('div');
           chip.className = 'pick-chip';
@@ -1721,7 +1738,8 @@ async function loadMyPicks() {
           numEl.className = 'pick-num';
           numEl.textContent = pi + 1;
           chip.appendChild(numEl);
-          chip.appendChild(document.createTextNode(pick));
+          const spread = spreadFields[pi] || '';
+          chip.appendChild(document.createTextNode(pick + (spread ? ' ' + spread : '')));
           chipsEl.appendChild(chip);
         });
         sub.appendChild(chipsEl);
@@ -2200,7 +2218,9 @@ async function loadWeeklyPicks() {
       emailTd.textContent = doc.email || '—';
       tr.appendChild(emailTd);
 
-      [doc.pick1, doc.pick2, doc.pick3, doc.pick4, doc.pick5].forEach(function(pick) {
+      const picks    = [doc.pick1,   doc.pick2,   doc.pick3,   doc.pick4,   doc.pick5];
+      const spreads  = [doc.spread1, doc.spread2, doc.spread3, doc.spread4, doc.spread5];
+      picks.forEach(function(pick, pi) {
         const td = document.createElement('td');
         if (pick && pick.trim()) {
           const chip = document.createElement('span');
@@ -2211,7 +2231,8 @@ async function loadWeeklyPicks() {
             img.src = logo; img.alt = pick;
             chip.appendChild(img);
           }
-          chip.appendChild(document.createTextNode(pick));
+          const spread = spreads[pi] || '';
+          chip.appendChild(document.createTextNode(pick + (spread ? ' ' + spread : '')));
           td.appendChild(chip);
         } else {
           td.textContent = '—';
@@ -2353,6 +2374,6 @@ async function loadWeeklyPicks() {
   </div>
 </div>
 
-<div class="version-badge">v0.6.5</div>
+<div class="version-badge">v0.6.6</div>
 </body>
 </html>
