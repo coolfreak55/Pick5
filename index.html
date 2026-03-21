@@ -1037,6 +1037,34 @@
     line-height: 1.5;
   }
 
+
+  /* ── SPREADS LOADING / ERROR ── */
+  .spreads-loading-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+    font-size: 15px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .spreads-loading-state .loading-spinner {
+    margin: 0 auto 16px;
+  }
+  .spreads-error-state {
+    text-align: center;
+    padding: 36px 20px;
+    background: rgba(224,85,85,0.07);
+    border: 1px solid rgba(224,85,85,0.25);
+    border-radius: 8px;
+    margin-bottom: 12px;
+  }
+  .spreads-error-icon { font-size: 32px; margin-bottom: 10px; }
+  .spreads-error-state p {
+    color: var(--error);
+    font-size: 14px;
+    letter-spacing: 0.06em;
+  }
+
 </style>
 </head>
 <body>
@@ -1139,6 +1167,15 @@
           <div class="spreads-subtitle">Pick up to 5 teams against the spread · Lines subject to change</div>
         </div>
         <div class="picks-counter" id="picksCounter">0 / 5 picked</div>
+      </div>
+      <div id="spreadsLoading" class="spreads-loading-state" style="display:none;">
+        <div class="loading-spinner"></div>
+        <p id="spreadsLoadingMsg">Loading games…</p>
+      </div>
+      <div id="spreadsError" class="spreads-error-state" style="display:none;">
+        <div class="spreads-error-icon">⚠️</div>
+        <p id="spreadsErrorMsg">Unable to load games. Please try again.</p>
+        <button class="btn-clear" onclick="loadSpreadsOnHomePage()" style="margin-top:12px;">Retry</button>
       </div>
       <div id="spreadsGrid" class="spreads-grid"></div>
       <div class="spreads-action-row">
@@ -1566,23 +1603,47 @@ async function submitSpreadsPicks() {
 
 // ── Spreads ──
 async function loadSpreadsOnHomePage() {
+  const section    = document.getElementById('spreadsSection');
+  const loadingEl  = document.getElementById('spreadsLoading');
+  const errorEl    = document.getElementById('spreadsError');
+  const loadingMsg = document.getElementById('spreadsLoadingMsg');
+
+  // Show section with loading state immediately
+  errorEl.style.display   = 'none';
+  loadingEl.style.display = 'block';
+  section.style.display   = 'block';
+
   try {
     const week = window.fbGetSpreadsWeek ? await window.fbGetSpreadsWeek() : null;
-    if (!week) { document.getElementById('spreadsSection').style.display = 'none'; return; }
+    if (!week) {
+      section.style.display   = 'none';
+      loadingEl.style.display = 'none';
+      return;
+    }
+    loadingMsg.textContent = 'Loading games for Week ' + week + '…';
     await fetchAndRenderSpreads(week);
+    loadingEl.style.display = 'none';
   } catch(e) {
     console.error('Spreads load error:', e);
-    document.getElementById('spreadsSection').style.display = 'none';
+    loadingEl.style.display  = 'none';
+    errorEl.style.display    = 'block';
+    document.getElementById('spreadsErrorMsg').textContent = 'Unable to load games. Check your connection and try again.';
   }
 }
 
 async function fetchAndRenderSpreads(week) {
-  const section = document.getElementById('spreadsSection');
-  const grid    = document.getElementById('spreadsGrid');
-  const title   = document.getElementById('spreadsTitle');
+  const section    = document.getElementById('spreadsSection');
+  const grid       = document.getElementById('spreadsGrid');
+  const title      = document.getElementById('spreadsTitle');
+  const loadingEl  = document.getElementById('spreadsLoading');
+  const errorEl    = document.getElementById('spreadsError');
+  const loadingMsg = document.getElementById('spreadsLoadingMsg');
 
   grid.innerHTML = '';
-  section.style.display = 'none';
+  errorEl.style.display   = 'none';
+  loadingEl.style.display = 'block';
+  loadingMsg.textContent  = 'Loading games for Week ' + week + '…';
+  section.style.display   = 'block';
   selectedPicks = [];
   updatePicksCounter();
 
@@ -1595,7 +1656,12 @@ async function fetchAndRenderSpreads(week) {
     const weekLabel = 'Week ' + week;
     const weekRows = dataRows.filter(r => r[0] && r[0].trim().toLowerCase() === weekLabel.toLowerCase());
 
-    if (weekRows.length === 0) { section.style.display = 'none'; return; }
+    loadingEl.style.display = 'none';
+
+    if (weekRows.length === 0) {
+      section.style.display  = 'none';
+      return;
+    }
 
     title.textContent = weekLabel + ' Matchups & Spreads';
     section.style.display = 'block';
@@ -1668,7 +1734,9 @@ async function fetchAndRenderSpreads(week) {
 
   } catch(e) {
     console.error('Spreads fetch error:', e);
-    section.style.display = 'none';
+    loadingEl.style.display = 'none';
+    errorEl.style.display   = 'block';
+    document.getElementById('spreadsErrorMsg').textContent = 'Unable to load games for Week ' + week + '. Please try again.';
   }
 }
 
@@ -2374,6 +2442,6 @@ async function loadWeeklyPicks() {
   </div>
 </div>
 
-<div class="version-badge">v0.6.6</div>
+<div class="version-badge">v0.6.7</div>
 </body>
 </html>
