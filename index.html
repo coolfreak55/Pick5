@@ -983,6 +983,60 @@
     margin-top: 2px;
   }
 
+
+  /* ── REQUEST ACCESS ── */
+  .request-access-link {
+    text-align: center;
+    margin-top: 16px;
+    font-size: 13px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+  }
+  .request-access-link span {
+    color: var(--accent);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .request-access-link span:hover { opacity: 0.8; }
+
+  #requestAccessOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    backdrop-filter: blur(4px);
+  }
+
+  .modal-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 36px 40px;
+    width: 100%;
+    max-width: 420px;
+    position: relative;
+    animation: pageFade 0.3s ease forwards;
+  }
+  .modal-card h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 26px;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  .modal-card p {
+    font-size: 14px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    margin-bottom: 24px;
+    line-height: 1.5;
+  }
+
 </style>
 </head>
 <body>
@@ -1029,6 +1083,36 @@
         <div class="pin-hint">Enter the PIN assigned to your email</div>
       </div>
       <button class="btn-login" id="loginBtn" onclick="handleLogin()">Enter</button>
+      <div class="request-access-link">
+        Don't have access? <span onclick="openRequestAccess()">Request Access</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ REQUEST ACCESS MODAL ═══ -->
+<div id="requestAccessOverlay" style="display:none;">
+  <div class="modal-card">
+    <h2>Request Access</h2>
+    <p>Fill out the form below and an admin will review your request.</p>
+    <div class="error-msg" id="requestErrorMsg"></div>
+    <div class="status-msg" id="requestStatusMsg"></div>
+    <div class="field">
+      <label>Email Address</label>
+      <input type="email" id="requestEmail" placeholder="you@example.com" />
+    </div>
+    <div class="field">
+      <label>Choose a PIN</label>
+      <input type="password" id="requestPin" placeholder="Choose a 4-digit PIN" maxlength="10" />
+      <div class="pin-hint">You'll use this PIN to log in once approved</div>
+    </div>
+    <div class="field">
+      <label>Team Name</label>
+      <input type="text" id="requestTeamName" placeholder="e.g. Mike's Picks" maxlength="50" />
+    </div>
+    <button class="btn-login" id="requestBtn" onclick="submitAccessRequest()">Submit Request</button>
+    <div class="request-access-link" style="margin-top:12px;">
+      <span onclick="closeRequestAccess()">← Back to Sign In</span>
     </div>
   </div>
 </div>
@@ -1140,6 +1224,7 @@
 // ── Constants ──
 const ADMIN_EMAILS     = ["jenowakoski@gmail.com", "wcgriffiths14@gmail.com"];
 const SHEET_CSV_URL    = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRqX7XR41_5tR9RKRaMW7jokRKvxRCPtuxlSA5jUC8U9Btit3bq8G_K9EihipOzSGnwCVgmq8UHC3Hy/pub?gid=0&single=true&output=csv';
+const ACCESS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwIqGCTovDWFrEVFcQQgk8LWRdr3ipzzIyA8wXV7KR6G_PuHV_AwjJw3V3xSm82aVXJ/exec';
 const PICKS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwSRseA76KhYoGki33yQ7O5MEGVOBdKYzYTAYSef88VBgoi2ymcWRvz3sZg5sqeIw/exec';
 const PICKS_DB_URL     = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS9-umRqGXfrl2flUZQ2pQaGaNT0FB8VsmjbFOs9Yjjh8PH2DaTGyAWEkEvWf5HUjHxgzyq7Z5XrvY2/pub?gid=0&single=true&output=csv';
 const SPREADS_CSV_URL  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTCZp0JY_6F3IQ_Uv7pRTTLRymDJ6NG8t9nT6KrFZ5pru7yZykoa5h2prW91r0x9kbej0aCZKHrSxH8/pub?gid=1821550063&single=true&output=csv';
@@ -1928,6 +2013,73 @@ function stopWeekPolling() {
   }
 }
 
+// ── Request Access ──
+function openRequestAccess() {
+  document.getElementById('requestAccessOverlay').style.display = 'flex';
+  document.getElementById('requestEmail').value = '';
+  document.getElementById('requestPin').value = '';
+  document.getElementById('requestTeamName').value = '';
+  document.getElementById('requestErrorMsg').classList.remove('show');
+  document.getElementById('requestStatusMsg').textContent = '';
+}
+
+function closeRequestAccess() {
+  document.getElementById('requestAccessOverlay').style.display = 'none';
+}
+
+async function submitAccessRequest() {
+  const email    = document.getElementById('requestEmail').value.trim().toLowerCase();
+  const pin      = document.getElementById('requestPin').value.trim();
+  const teamName = document.getElementById('requestTeamName').value.trim();
+  const btn      = document.getElementById('requestBtn');
+  const errEl    = document.getElementById('requestErrorMsg');
+  const staEl    = document.getElementById('requestStatusMsg');
+
+  errEl.classList.remove('show');
+
+  if (!email || !pin || !teamName) {
+    errEl.textContent = 'Please fill out all fields.';
+    errEl.classList.add('show');
+    return;
+  }
+
+  if (pin.length < 3) {
+    errEl.textContent = 'PIN must be at least 3 characters.';
+    errEl.classList.add('show');
+    return;
+  }
+
+  btn.disabled = true;
+  staEl.textContent = 'Submitting request…';
+
+  try {
+    await fetch(ACCESS_SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, pin, teamName })
+    });
+
+    staEl.textContent = '';
+    btn.textContent = 'Request Sent ✓';
+    btn.style.background = 'linear-gradient(135deg, #4caf7d 0%, #2e7d52 100%)';
+
+    setTimeout(() => {
+      closeRequestAccess();
+      btn.textContent = 'Submit Request';
+      btn.style.background = '';
+      btn.disabled = false;
+    }, 2500);
+
+  } catch(err) {
+    staEl.textContent = '';
+    errEl.textContent = 'Failed to submit. Please try again.';
+    errEl.classList.add('show');
+    btn.disabled = false;
+    console.error(err);
+  }
+}
+
 async function loadWeeklyPicks() {
   const loadingEl  = document.getElementById('weeklyPicksLoading');
   const errorEl    = document.getElementById('weeklyPicksError');
@@ -2151,6 +2303,6 @@ async function loadWeeklyPicks() {
   </div>
 </div>
 
-<div class="version-badge">v0.6.3</div>
+<div class="version-badge">v0.6.4</div>
 </body>
 </html>
