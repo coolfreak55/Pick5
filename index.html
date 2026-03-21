@@ -1738,10 +1738,16 @@ async function loadMyPicks() {
 }
 
 // ── Scores ──
-function initScores() {
+async function initScores() {
   const now = new Date();
   scoresYear = now.getMonth() < 8 ? now.getFullYear() - 1 : now.getFullYear();
-  scoresWeek = scoresWeek || 1;
+  // Default to admin-set week, fall back to 1
+  try {
+    const adminWeek = window.fbGetSpreadsWeek ? await window.fbGetSpreadsWeek() : null;
+    scoresWeek = adminWeek ? parseInt(adminWeek) : (scoresWeek || 1);
+  } catch(e) {
+    scoresWeek = scoresWeek || 1;
+  }
   updateScoresWeekLabel();
   updateScoresYearLabel();
   fetchScores();
