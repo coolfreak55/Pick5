@@ -1223,6 +1223,7 @@
 <script>
 // ── Constants ──
 const ADMIN_EMAILS     = ["jenowakoski@gmail.com", "wcgriffiths14@gmail.com"];
+const WAITING_APPROVAL_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRqX7XR41_5tR9RKRaMW7jokRKvxRCPtuxlSA5jUC8U9Btit3bq8G_K9EihipOzSGnwCVgmq8UHC3Hy/pub?gid=331008350&single=true&output=csv';
 const SHEET_CSV_URL    = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRqX7XR41_5tR9RKRaMW7jokRKvxRCPtuxlSA5jUC8U9Btit3bq8G_K9EihipOzSGnwCVgmq8UHC3Hy/pub?gid=0&single=true&output=csv';
 const ACCESS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwIqGCTovDWFrEVFcQQgk8LWRdr3ipzzIyA8wXV7KR6G_PuHV_AwjJw3V3xSm82aVXJ/exec';
 const PICKS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwSRseA76KhYoGki33yQ7O5MEGVOBdKYzYTAYSef88VBgoi2ymcWRvz3sZg5sqeIw/exec';
@@ -2058,15 +2059,33 @@ async function submitAccessRequest() {
   staEl.textContent = 'Checking email…';
 
   try {
-    // Check if email already exists on approved list
-    const res = await fetch(SHEET_CSV_URL + '&cachebust=' + Date.now());
-    if (res.ok) {
-      const text = await res.text();
+    // Check approved list and waiting approval list in parallel
+    const [approvedRes, waitingRes] = await Promise.all([
+      fetch(SHEET_CSV_URL + '&cachebust=' + Date.now()),
+      fetch(WAITING_APPROVAL_URL + '&cachebust=' + Date.now())
+    ]);
+
+    if (approvedRes.ok) {
+      const text = await approvedRes.text();
       const rows = parseCSV(text);
       const dataRows = rows[0][0].toLowerCase().includes('email') ? rows.slice(1) : rows;
       const alreadyApproved = dataRows.some(r => r[0] && r[0].toLowerCase() === email);
       if (alreadyApproved) {
         errEl.textContent = 'This email already has an approved account. Try logging in!';
+        errEl.classList.add('show');
+        btn.disabled = false;
+        staEl.textContent = '';
+        return;
+      }
+    }
+
+    if (waitingRes.ok) {
+      const text = await waitingRes.text();
+      const rows = parseCSV(text);
+      const dataRows = rows[0][0].toLowerCase().includes('email') ? rows.slice(1) : rows;
+      const alreadyWaiting = dataRows.some(r => r[0] && r[0].toLowerCase() === email);
+      if (alreadyWaiting) {
+        errEl.textContent = 'This email already has a pending request. Please wait for approval!';
         errEl.classList.add('show');
         btn.disabled = false;
         staEl.textContent = '';
@@ -2328,6 +2347,6 @@ async function loadWeeklyPicks() {
   </div>
 </div>
 
-<div class="version-badge">v0.6.4</div>
+<div class="version-badge">v0.6.5</div>
 </body>
 </html>
