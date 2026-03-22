@@ -1070,6 +1070,23 @@
     letter-spacing: 0.06em;
   }
 
+
+  /* ── WIN/LOSS RESULTS ── */
+  .wp-pick.win  { border-color: #4caf7d; background: rgba(76,175,125,0.12); }
+  .wp-pick.loss { border-color: #e05555; background: rgba(224,85,85,0.12); }
+  .wp-pick.win  img { filter: none; }
+  .wp-pick.loss img { filter: grayscale(0.4); }
+
+  .wp-record {
+    white-space: nowrap;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 15px;
+    letter-spacing: 0.1em;
+  }
+  .wp-record .wins  { color: #4caf7d; }
+  .wp-record .losses { color: #e05555; }
+  .wp-record .pending { color: var(--muted); font-size: 12px; font-family: 'Barlow Condensed', sans-serif; }
+
 </style>
 </head>
 <body>
@@ -1274,6 +1291,7 @@ const SHEET_CSV_URL    = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRqX7X
 const ACCESS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwIqGCTovDWFrEVFcQQgk8LWRdr3ipzzIyA8wXV7KR6G_PuHV_AwjJw3V3xSm82aVXJ/exec';
 const PICKS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwSRseA76KhYoGki33yQ7O5MEGVOBdKYzYTAYSef88VBgoi2ymcWRvz3sZg5sqeIw/exec';
 const PICKS_DB_URL     = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS9-umRqGXfrl2flUZQ2pQaGaNT0FB8VsmjbFOs9Yjjh8PH2DaTGyAWEkEvWf5HUjHxgzyq7Z5XrvY2/pub?gid=0&single=true&output=csv';
+const SCORES_CSV_URL   = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTCZp0JY_6F3IQ_Uv7pRTTLRymDJ6NG8t9nT6KrFZ5pru7yZykoa5h2prW91r0x9kbej0aCZKHrSxH8/pub?gid=1564710724&single=true&output=csv';
 const SPREADS_CSV_URL  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTCZp0JY_6F3IQ_Uv7pRTTLRymDJ6NG8t9nT6KrFZ5pru7yZykoa5h2prW91r0x9kbej0aCZKHrSxH8/pub?gid=1821550063&single=true&output=csv';
 
 // ── Scores state ──
@@ -2284,6 +2302,64 @@ async function submitAccessRequest() {
   }
 }
 
+// ── Scores Map for Weekly Picks W/L ──
+async function fetchScoresMap(week) {
+  try {
+    const res = await fetch(SCORES_CSV_URL + '&cachebust=' + Date.now());
+    if (!res.ok) return {};
+    const text = await res.text();
+    const rows = parseCSV(text);
+    // Headers: Week, Date, Time, Away Team, Home Team, Away Score, Home Score, Quarter, Clock
+    const dataRows = rows[0][0].toLowerCase().includes('week') ? rows.slice(1) : rows;
+    const weekLabel = 'Week ' + week;
+    const map = {};
+
+    dataRows.forEach(function(row) {
+      if (!row[0] || row[0].trim().toLowerCase() !== weekLabel.toLowerCase()) return;
+      const awayTeam  = (row[3] || '').trim().toUpperCase();
+      const homeTeam  = (row[4] || '').trim().toUpperCase();
+      const awayScore = parseFloat(row[5]);
+      const homeScore = parseFloat(row[6]);
+      const quarter   = (row[7] || '').trim().toUpperCase();
+      const isFinal   = quarter === 'F';
+
+      if (awayTeam) map[awayTeam] = { awayScore, homeScore, awayTeam, homeTeam, isFinal };
+      if (homeTeam) map[homeTeam] = { awayScore, homeScore, awayTeam, homeTeam, isFinal };
+    });
+
+    return map;
+  } catch(e) {
+    console.error('Scores fetch error:', e);
+    return {};
+  }
+}
+
+function getPickResult(pick, spreadStr, scoresMap) {
+  const abbr = pick.trim().toUpperCase();
+  const game = scoresMap[abbr];
+  if (!game || !game.isFinal) return 'pending';
+
+  const spreadNum = parseFloat((spreadStr || '').replace(/[^0-9.\-+]/g, ''));
+  if (isNaN(spreadNum)) return 'pending';
+
+  const { awayScore, homeScore, awayTeam, homeTeam } = game;
+  const isAway = awayTeam === abbr;
+  const teamScore  = isAway ? awayScore : homeScore;
+  const otherScore = isAway ? homeScore : awayScore;
+  const margin = teamScore - otherScore; // positive = team won
+
+  // spreadNum is from the picked team's perspective
+  // e.g. PHI -7.5 means PHI needs to win by more than 7.5
+  // e.g. DAL +7.5 means DAL needs to lose by less than 7.5 (or win)
+  if (spreadNum < 0) {
+    // Picked the favorite — need to win by more than the spread
+    return margin > Math.abs(spreadNum) ? 'win' : 'loss';
+  } else {
+    // Picked the underdog — need to not lose by more than the spread
+    return margin > -spreadNum ? 'win' : 'loss';
+  }
+}
+
 async function loadWeeklyPicks() {
   const loadingEl  = document.getElementById('weeklyPicksLoading');
   const errorEl    = document.getElementById('weeklyPicksError');
@@ -2308,7 +2384,12 @@ async function loadWeeklyPicks() {
     subtitleEl.textContent = weekLabel + " · Everyone's Picks";
 
     if (!window.fbGetWeeklyPicks) throw new Error('Firebase not ready');
-    const allPicks = await window.fbGetWeeklyPicks(weekLabel);
+
+    // Fetch picks and scores in parallel
+    const [allPicks, scoresMap] = await Promise.all([
+      window.fbGetWeeklyPicks(weekLabel),
+      fetchScoresMap(week)
+    ]);
     loadingEl.style.display = 'none';
 
     if (allPicks.length === 0) {
@@ -2337,7 +2418,7 @@ async function loadWeeklyPicks() {
 
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
-    ['User', 'Pick 1', 'Pick 2', 'Pick 3', 'Pick 4', 'Pick 5'].forEach(function(h) {
+    ['User', 'Pick 1', 'Pick 2', 'Pick 3', 'Pick 4', 'Pick 5', 'Record'].forEach(function(h) {
       const th = document.createElement('th');
       th.textContent = h;
       headerRow.appendChild(th);
@@ -2356,6 +2437,8 @@ async function loadWeeklyPicks() {
 
       const picks    = [doc.pick1,   doc.pick2,   doc.pick3,   doc.pick4,   doc.pick5];
       const spreads  = [doc.spread1, doc.spread2, doc.spread3, doc.spread4, doc.spread5];
+      let wins = 0, losses = 0, pending = 0;
+
       picks.forEach(function(pick, pi) {
         const td = document.createElement('td');
         if (pick && pick.trim()) {
@@ -2369,6 +2452,13 @@ async function loadWeeklyPicks() {
           }
           const spread = spreads[pi] || '';
           chip.appendChild(document.createTextNode(pick + (spread ? ' ' + spread : '')));
+
+          // Check result from scoresMap
+          const result = getPickResult(pick, spread, scoresMap);
+          if (result === 'win')  { chip.classList.add('win');  wins++; }
+          else if (result === 'loss') { chip.classList.add('loss'); losses++; }
+          else { pending++; }
+
           td.appendChild(chip);
         } else {
           td.textContent = '—';
@@ -2376,6 +2466,19 @@ async function loadWeeklyPicks() {
         }
         tr.appendChild(td);
       });
+
+      // W/L record cell
+      const recordTd = document.createElement('td');
+      recordTd.className = 'wp-record';
+      if (wins > 0 || losses > 0) {
+        recordTd.innerHTML =
+          '<span class="wins">' + wins + 'W</span> ' +
+          '<span class="losses">' + losses + 'L</span>' +
+          (pending > 0 ? ' <span class="pending">(' + pending + ' pending)</span>' : '');
+      } else {
+        recordTd.innerHTML = '<span class="pending">Pending</span>';
+      }
+      tr.appendChild(recordTd);
 
 
 
@@ -2507,6 +2610,6 @@ async function loadWeeklyPicks() {
   </div>
 </div>
 
-<div class="version-badge">v0.7.1</div>
+<div class="version-badge">v0.7.2</div>
 </body>
 </html>
