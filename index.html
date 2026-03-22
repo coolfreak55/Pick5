@@ -1806,6 +1806,13 @@ async function loadMyPicks() {
           numEl.className = 'pick-num';
           numEl.textContent = pi + 1;
           chip.appendChild(numEl);
+          const logo = getTeamLogo(pick);
+          if (logo) {
+            const img = document.createElement('img');
+            img.src = logo; img.alt = pick;
+            img.style.cssText = 'width:22px;height:22px;object-fit:contain;vertical-align:middle;';
+            chip.appendChild(img);
+          }
           const spread = spreadFields[pi] || '';
           chip.appendChild(document.createTextNode(pick + (spread ? ' ' + spread : '')));
           chipsEl.appendChild(chip);
