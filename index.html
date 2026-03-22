@@ -1110,7 +1110,13 @@
     border-bottom: 1px solid var(--border);
     white-space: nowrap;
   }
-  .results-table th:first-child { text-align: left; }
+  .results-table th:first-child {
+    text-align: left;
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: rgba(200,169,74,0.07);
+  }
   .results-table td {
     padding: 11px 16px;
     border-bottom: 1px solid var(--border);
@@ -1123,6 +1129,13 @@
     font-weight: 700;
     letter-spacing: 0.04em;
     color: var(--text);
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--surface);
+  }
+  .results-table tr:hover td:first-child {
+    background: #1a1f2b;
   }
   .results-table tr:last-child td { border-bottom: none; }
   .results-table tr:hover td { background: rgba(255,255,255,0.02); }
@@ -2577,11 +2590,8 @@ async function loadResultsPage() {
           badge.classList.add('pending');
           badge.textContent = 'TBD';
         } else {
-          const total = w + l;
-          if (w === 5)            badge.classList.add('perfect');
-          else if (w > l)         badge.classList.add('good');
-          else if (l > w)         badge.classList.add('bad');
-          else                    badge.classList.add('even');
+          if (w === 5)      badge.classList.add('perfect');
+          else if (l === 5) badge.classList.add('bad');
           badge.textContent = w + '-' + l + (p > 0 ? '*' : '');
         }
 
@@ -2898,6 +2908,6 @@ async function loadWeeklyPicks() {
   </div>
 </div>
 
-<div class="version-badge">v0.7.3</div>
+<div class="version-badge">v0.7.4</div>
 </body>
 </html>
