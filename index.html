@@ -1699,8 +1699,8 @@ async function fetchAndRenderSpreads(week) {
     weekRows.forEach((row, i) => {
       const date     = (row[1] || '').trim();
       const gameTime = (row[2] || '').trim();
-      const home     = (row[3] || '').trim();
-      const away     = (row[4] || '').trim();
+      const away     = (row[3] || '').trim();
+      const home     = (row[4] || '').trim();
       const odds     = (row[5] || '').trim();
       if (!away && !home) return;
 
@@ -2507,6 +2507,6 @@ async function loadWeeklyPicks() {
   </div>
 </div>
 
-<div class="version-badge">v0.7.0</div>
+<div class="version-badge">v0.7.1</div>
 </body>
 </html>
