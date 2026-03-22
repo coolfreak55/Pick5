@@ -1684,7 +1684,6 @@ async function fetchAndRenderSpreads(week) {
     const text = await res.text();
     const rows = parseCSV(text);
     const dataRows = rows[0][0].toLowerCase().includes('week') ? rows.slice(1) : rows;
-    const weekLabel = 'Week ' + week;
     const weekRows = dataRows.filter(r => r[0] && r[0].trim().toLowerCase() === weekLabel.toLowerCase());
 
     loadingEl.style.display = 'none';
