@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NFL Team Selector</title>
+<title>Pick 5</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -1071,9 +1071,9 @@
 
 <!-- ═══ TOP NAV ═══ -->
 <nav id="topNav">
-  <div class="nav-logo">🏈 NFL Selector</div>
+  <div class="nav-logo">🏈 Pick 5</div>
   <div class="nav-links">
-    <button class="nav-link active" id="navSelector" onclick="showPage('selector')">Team Selector</button>
+    <button class="nav-link active" id="navSelector" onclick="showPage('selector')">Pick 5</button>
     <button class="nav-link" id="navMyPicks" onclick="showPage('myPicks')">My Picks</button>
     <button class="nav-link" id="navScores" onclick="showPage('scores')">Scores</button>
     <button class="nav-link" id="navWeeklyPicks" onclick="showPage('weeklyPicks')">Weekly Picks</button>
@@ -1092,7 +1092,7 @@
   <div class="container">
     <header>
       <div class="shield">🏈</div>
-      <h1>NFL Team<br>Selector</h1>
+      <h1>Pick 5</h1>
       <p class="subtitle">Authorized Access Only</p>
       <div class="divider"></div>
     </header>
@@ -1151,8 +1151,8 @@
     <div class="page-header">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
         <div>
-          <div class="page-title">Team Selector</div>
-          <div class="page-subtitle">Pick your five favorites</div>
+          <div class="page-title">Pick 5</div>
+          <div class="page-subtitle">Pick 5 teams against the spread</div>
           <div class="page-divider"></div>
         </div>
         <div class="week-badge" id="weekBadge">Week —</div>
@@ -1717,10 +1717,24 @@ async function fetchAndRenderSpreads(week) {
         '<div class="team-pick-info"><div class="team-pick-abbr">' + away + '</div>' +
         '<div class="team-pick-spread">' + (awaySpread || '') + '</div></div>';
 
+      // Convert date string to day of week
+      let dayStr = '';
+      if (date) {
+        try {
+          const parts = date.split('/');
+          // parts: month, day, year (e.g. 9/4/25)
+          const year  = parseInt(parts[2]) + 2000;
+          const month = parseInt(parts[0]) - 1;
+          const day   = parseInt(parts[1]);
+          const d = new Date(year, month, day);
+          dayStr = d.toLocaleDateString('en-US', { weekday: 'long' });
+        } catch(e) { dayStr = date; }
+      }
+
       const vsEl = document.createElement('div');
       vsEl.className = 'spread-vs';
       vsEl.innerHTML = '<span>@</span><div class="spread-meta-inline">' +
-        (date ? '<span>' + date + '</span>' : '') +
+        (dayStr ? '<span>' + dayStr + '</span>' : '') +
         (gameTime ? '<span>' + gameTime + '</span>' : '') + '</div>';
 
       const homeBtn = document.createElement('div');
@@ -2455,6 +2469,6 @@ async function loadWeeklyPicks() {
   </div>
 </div>
 
-<div class="version-badge">v0.6.8</div>
+<div class="version-badge">v0.6.9</div>
 </body>
 </html>
