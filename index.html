@@ -1163,6 +1163,73 @@
     color: var(--accent);
   }
 
+
+  /* ── TIEBREAKER ── */
+  .tiebreaker-row {
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-top: 16px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .tiebreaker-game {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+  .tiebreaker-game span {
+    display: block;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .tiebreaker-input-wrap {
+    flex: 1;
+    min-width: 200px;
+  }
+  .tiebreaker-input-wrap label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .tiebreaker-input-wrap input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    -moz-appearance: textfield;
+  }
+  .tiebreaker-input-wrap input::-webkit-outer-spin-button,
+  .tiebreaker-input-wrap input::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .tiebreaker-input-wrap input:focus { border-color: var(--accent); box-shadow: 0 0 0 1px rgba(200,169,74,0.2); }
+  .tiebreaker-input-wrap input.error { border-color: var(--error); box-shadow: 0 0 0 1px rgba(224,85,85,0.2); }
+  .tiebreaker-hint {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    margin-top: 5px;
+  }
+
 </style>
 </head>
 <body>
@@ -1277,6 +1344,14 @@
         <button class="btn-clear" onclick="loadSpreadsOnHomePage()" style="margin-top:12px;">Retry</button>
       </div>
       <div id="spreadsGrid" class="spreads-grid"></div>
+      <div class="tiebreaker-row" id="tiebreakerRow" style="display:none;">
+        <div class="tiebreaker-game" id="tiebreakerGame"></div>
+        <div class="tiebreaker-input-wrap">
+          <label>Total Points Tiebreaker</label>
+          <input type="number" id="tiebreakerInput" placeholder="Enter total score" min="0" max="150" />
+          <div class="tiebreaker-hint">What will the total combined score be?</div>
+        </div>
+      </div>
       <div class="spreads-action-row">
         <button class="btn-clear" onclick="clearSpreadsPicks()">Clear</button>
         <button class="btn-submit" id="spreadsSubmitBtn" onclick="submitSpreadsPicks()" disabled>Lock In Picks</button>
@@ -1330,6 +1405,7 @@
       pick4: payload.pick4 || '', pick5: payload.pick5 || '',
       spread1: payload.spread1 || '', spread2: payload.spread2 || '', spread3: payload.spread3 || '',
       spread4: payload.spread4 || '', spread5: payload.spread5 || '',
+      tiebreaker: payload.tiebreaker !== undefined ? payload.tiebreaker : '',
       timestamp: Date.now()
     });
   };
@@ -1661,11 +1737,26 @@ function clearSpreadsPicks() {
   selectedPicks = [];
   renderPickSelections();
   updatePicksCounter();
+  const tb = document.getElementById('tiebreakerInput');
+  if (tb) tb.value = '';
 }
 
 // ── Submit Picks ──
 async function submitSpreadsPicks() {
   if (selectedPicks.length === 0) return;
+
+  // Validate tiebreaker
+  const tbInput = document.getElementById('tiebreakerInput');
+  const tbValue = tbInput ? tbInput.value.trim() : '';
+  if (!tbValue || isNaN(parseInt(tbValue))) {
+    tbInput.classList.add('error');
+    tbInput.focus();
+    tbInput.placeholder = 'Required — enter a number!';
+    setTimeout(() => { tbInput.classList.remove('error'); tbInput.placeholder = 'Enter total score'; }, 3000);
+    return;
+  }
+  const tiebreaker = parseInt(tbValue);
+
   const btn    = document.getElementById('spreadsSubmitBtn');
   const status = document.getElementById('spreadsSaveStatus');
   btn.disabled = true;
@@ -1696,7 +1787,8 @@ async function submitSpreadsPicks() {
     spread2: selectedPicks[1] ? selectedPicks[1].spread : '',
     spread3: selectedPicks[2] ? selectedPicks[2].spread : '',
     spread4: selectedPicks[3] ? selectedPicks[3].spread : '',
-    spread5: selectedPicks[4] ? selectedPicks[4].spread : ''
+    spread5: selectedPicks[4] ? selectedPicks[4].spread : '',
+    tiebreaker: tiebreaker
   };
 
   try {
@@ -1887,6 +1979,26 @@ async function fetchAndRenderSpreads(week) {
       grid.appendChild(card);
     });
 
+    // Show tiebreaker with last game of the week
+    if (weekRows.length > 0) {
+      const lastRow  = weekRows[weekRows.length - 1];
+      const lastAway = (lastRow[3] || '').trim();
+      const lastHome = (lastRow[4] || '').trim();
+      const lastTime = (lastRow[2] || '').trim();
+      const lastDate = lastRow[1] || '';
+      let lastDay = '';
+      try {
+        const parts = lastDate.split('/');
+        const d = new Date(parseInt(parts[2]) + 2000, parseInt(parts[0]) - 1, parseInt(parts[1]));
+        lastDay = d.toLocaleDateString('en-US', { weekday: 'long' });
+      } catch(e) {}
+      const tbGame = document.getElementById('tiebreakerGame');
+      tbGame.innerHTML = '<span>Tiebreaker Game</span>' + lastAway + ' @ ' + lastHome +
+        (lastDay ? '<br><small style="font-family:'Barlow Condensed',sans-serif;font-size:13px;color:var(--muted);letter-spacing:0.06em;">' + lastDay + ' ' + lastTime + '</small>' : '');
+      document.getElementById('tiebreakerRow').style.display = 'flex';
+      document.getElementById('tiebreakerInput').value = '';
+    }
+
     // Restore user's existing picks for this week
     if (existingPicks) {
       const prevPicks = [
@@ -1897,6 +2009,10 @@ async function fetchAndRenderSpreads(week) {
         { abbr: existingPicks.pick5, spread: existingPicks.spread5 },
       ].filter(p => p.abbr && p.abbr.trim());
       selectedPicks = prevPicks;
+      // Pre-fill tiebreaker if they already submitted one
+      if (existingPicks.tiebreaker !== undefined && existingPicks.tiebreaker !== '') {
+        document.getElementById('tiebreakerInput').value = existingPicks.tiebreaker;
+      }
     }
 
     renderPickSelections();
@@ -2906,6 +3022,6 @@ async function loadWeeklyPicks() {
   </div>
 </div>
 
-<div class="version-badge">v0.7.4</div>
+<div class="version-badge">v0.7.5</div>
 </body>
 </html>
