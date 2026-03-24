@@ -914,7 +914,7 @@
     gap: 1px;
     font-size: 9px;
     letter-spacing: 0.04em;
-    color: var(--muted);
+    color: var(--text);
     text-transform: uppercase;
     text-align: center;
     line-height: 1.3;
@@ -2143,7 +2143,7 @@ async function loadMyPicks() {
         if (doc.tiebreaker !== undefined && doc.tiebreaker !== '') {
           const tbDiv = document.createElement('div');
           tbDiv.className = 'tb-display';
-          const gameStr = doc.tiebreakerGame ? '<span style="color:var(--muted);margin-right:6px;">' + doc.tiebreakerGame + '</span>' : '';
+          const gameStr = doc.tiebreakerGame ? '<span style="color:var(--text);margin-right:6px;">' + doc.tiebreakerGame + '</span>' : '';
           tbDiv.innerHTML = gameStr + 'Tiebreaker: <strong>' + doc.tiebreaker + ' pts</strong>';
           sub.appendChild(tbDiv);
         }
@@ -2698,6 +2698,9 @@ async function loadResultsPage() {
     const thTotal = document.createElement('th');
     thTotal.textContent = 'Total';
     headerRow.appendChild(thTotal);
+    const thTb = document.createElement('th');
+    thTb.textContent = 'TB Diff';
+    headerRow.appendChild(thTb);
     thead.appendChild(headerRow);
     table.appendChild(thead);
 
@@ -2763,6 +2766,30 @@ async function loadResultsPage() {
       totalTd.appendChild(totalEl);
       tr.appendChild(totalTd);
 
+      // Tiebreaker diff total cell
+      let totalTbDiff = 0;
+      let tbWeeksCount = 0;
+      allWeeks.forEach(function(week) {
+        const doc = userWeekMap[email][week];
+        if (!doc || doc.tiebreaker === undefined || doc.tiebreaker === '') return;
+        const weekScores = scoresByWeek[week] || {};
+        // Build a fake scoresMap for getActualTiebreaker
+        const actual = getActualTiebreakerFromWeek(weekScores);
+        if (actual !== null) {
+          totalTbDiff += Math.abs(parseInt(doc.tiebreaker) - actual);
+          tbWeeksCount++;
+        }
+      });
+
+      const tbTotalTd = document.createElement('td');
+      if (tbWeeksCount > 0) {
+        tbTotalTd.innerHTML = '<span style="color:var(--text);font-size:15px;font-weight:700;">' + totalTbDiff + '</span>' +
+          '<span style="color:var(--muted);font-size:11px;letter-spacing:0.06em;"> pts off</span>';
+      } else {
+        tbTotalTd.innerHTML = '<span style="color:var(--muted);">—</span>';
+      }
+      tr.appendChild(tbTotalTd);
+
       tbody.appendChild(tr);
     });
 
@@ -2797,9 +2824,19 @@ async function fetchAllPicks() {
 }
 
 function getActualTiebreaker(scoresMap) {
-  // Find a final game with both scores — use the last one added (last game of week)
   let lastGame = null;
   Object.values(scoresMap).forEach(function(g) {
+    if (g.isFinal && !isNaN(g.awayScore) && !isNaN(g.homeScore)) {
+      lastGame = g;
+    }
+  });
+  if (!lastGame) return null;
+  return lastGame.awayScore + lastGame.homeScore;
+}
+
+function getActualTiebreakerFromWeek(weekScores) {
+  let lastGame = null;
+  Object.values(weekScores).forEach(function(g) {
     if (g.isFinal && !isNaN(g.awayScore) && !isNaN(g.homeScore)) {
       lastGame = g;
     }
@@ -3095,6 +3132,6 @@ async function loadWeeklyPicks() {
   </div>
 </div>
 
-<div class="version-badge">v0.7.7</div>
+<div class="version-badge">v0.7.8</div>
 </body>
 </html>
