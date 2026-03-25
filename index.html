@@ -2274,7 +2274,11 @@ async function initScores() {
     const adminWeek = window.fbGetSpreadsWeek ? await window.fbGetSpreadsWeek() : null;
     if (adminWeek) {
       const aw = adminWeek.toString().toLowerCase();
-      if (aw.includes('pre')) {
+      if (aw.includes('hof')) {
+        // HOF Game — preseason week 1
+        scoresSeasonType = 1;
+        scoresWeek = 1;
+      } else if (aw.includes('pre')) {
         // Pre Week — switch to preseason, extract number
         scoresSeasonType = 1;
         scoresWeek = parseInt(aw.replace(/[^0-9]/g, '')) || 1;
@@ -2701,7 +2705,7 @@ async function fetchScoresMap(week) {
     const rows = parseCSV(text);
     // Headers: Week, Date, Time, Away Team, Home Team, Away Score, Home Score, Quarter, Clock
     const dataRows = rows[0][0].toLowerCase().includes('week') ? rows.slice(1) : rows;
-    const weekLabel = 'Week ' + week;
+    const weekLabel = (week && week.toString().toLowerCase().includes('week')) ? week : 'Week ' + week;
     const map = {};
 
     dataRows.forEach(function(row) {
@@ -2939,6 +2943,20 @@ async function loadResultsPage() {
         if (homeTeam) scoresByWeek[wk][homeTeam] = gameData;
       });
     }
+
+    // Get unique weeks sorted
+    const allWeeksSet = [...new Set(allPicksSnap.map(d => d.week).filter(Boolean))];
+    const allWeeks = allWeeksSet.sort(function(a, b) {
+      // HOF first, then Pre Week, then regular weeks
+      const order = function(s) {
+        if (!s) return 999;
+        const sl = s.toLowerCase();
+        if (sl.includes('hof')) return -2;
+        if (sl.includes('pre')) return -1;
+        return parseInt(s.replace(/[^0-9]/g, '')) || 999;
+      };
+      return order(a) - order(b);
+    });
 
     // Get latest submission per user per week
     const userWeekMap = {};
@@ -3404,6 +3422,7 @@ async function loadWeeklyPicks() {
           <label>Select Week to Display</label>
           <select id="adminSpreadsWeekSelect">
             <option value="">— None (hide graphic) —</option>
+            <option value="HOF Game">HOF Game</option>
             <option value="Pre Week 1">Pre Week 1</option>
             <option value="Pre Week 2">Pre Week 2</option>
             <option value="Pre Week 3">Pre Week 3</option>
@@ -3438,6 +3457,6 @@ async function loadWeeklyPicks() {
   </div>
 </div>
 
-<div class="version-badge">v0.8.3</div>
+<div class="version-badge">v0.8.4</div>
 </body>
 </html>
