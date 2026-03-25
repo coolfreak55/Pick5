@@ -1335,6 +1335,25 @@
     margin-top: 3px;
   }
 
+
+  /* ── GAME STARTED ── */
+  .team-pick-btn.game-started {
+    opacity: 0.45 !important;
+    filter: grayscale(0.6) !important;
+    cursor: not-allowed !important;
+  }
+  .game-in-progress::after {
+    content: '🔒 In Progress';
+    display: block;
+    text-align: center;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 4px 0 2px;
+    width: 100%;
+  }
+
 </style>
 </head>
 <body>
@@ -1994,16 +2013,37 @@ async function fetchAndRenderSpreads(week) {
     const userEmail    = (navEl.dataset.email || navEl.textContent).toLowerCase();
     const weekLabel    = (isNaN(parseInt(week)) || week.toString().toLowerCase().includes('week')) ? week : 'Week ' + week;
 
-    const [spreadsRes, existingPicks] = await Promise.all([
+    const [spreadsRes, existingPicks, liveScoresMap] = await Promise.all([
       fetch(SPREADS_CSV_URL + '&cachebust=' + Date.now()),
       (async () => {
         try {
           if (!window.fbGetMyPicks) return [];
           const docs = await window.fbGetMyPicks(userEmail);
-          // Get the most recent submission for this week
           const weekDocs = docs.filter(d => d.week === weekLabel);
           return weekDocs.length > 0 ? weekDocs[0] : null;
         } catch(e) { return null; }
+      })(),
+      // Fetch live scores to check which games have started
+      (async () => {
+        try {
+          const r = await fetch(SCORES_CSV_URL + '&cachebust=' + Date.now());
+          if (!r.ok) return {};
+          const t = await r.text();
+          const srows = parseCSV(t);
+          const sdataRows = srows[0][0].toLowerCase().includes('week') ? srows.slice(1) : srows;
+          const map = {};
+          sdataRows.forEach(function(row) {
+            if (!row[0] || row[0].trim().toLowerCase() !== weekLabel.toLowerCase()) return;
+            const away = (row[3] || '').trim().toUpperCase();
+            const home = (row[4] || '').trim().toUpperCase();
+            const qtr  = (row[7] || '').trim().toUpperCase();
+            // Game has started if quarter is not empty and not just a future placeholder
+            const started = qtr !== '' && qtr !== '-' && qtr !== '0';
+            if (away) map[away] = { started, qtr };
+            if (home) map[home] = { started, qtr };
+          });
+          return map;
+        } catch(e) { return {}; }
       })()
     ]);
 
@@ -2050,7 +2090,11 @@ async function fetchAndRenderSpreads(week) {
       const homeLogo = getTeamLogo(home);
 
       const card = document.createElement('div');
-      card.className = 'spread-card';
+      const awayStartedCheck = liveScoresMap && liveScoresMap[away] && liveScoresMap[away].started;
+      const homeStartedCheck = liveScoresMap && liveScoresMap[home] && liveScoresMap[home].started;
+      const gameStartedCheck = awayStartedCheck || homeStartedCheck;
+
+      card.className = 'spread-card' + (gameStartedCheck ? ' game-in-progress' : '');
       card.dataset.game = i;
       card.dataset.away = away;
       card.dataset.home = home;
@@ -2060,8 +2104,17 @@ async function fetchAndRenderSpreads(week) {
       awayBtn.className = 'team-pick-btn away-btn';
       awayBtn.dataset.abbr = away;
       awayBtn.dataset.game = i;
+      const awayStarted = liveScoresMap && liveScoresMap[away] && liveScoresMap[away].started;
+      const homeStarted = liveScoresMap && liveScoresMap[home] && liveScoresMap[home].started;
+      const gameStarted = awayStarted || homeStarted;
+
       awayBtn.setAttribute('data-state', 'idle');
       awayBtn.dataset.spread = awaySpread || '';
+      awayBtn.dataset.started = gameStarted ? '1' : '0';
+      if (gameStarted) {
+        awayBtn.classList.add('game-started');
+        awayBtn.style.pointerEvents = 'none';
+      }
       awayBtn.onclick = () => togglePick(away, i);
       awayBtn.innerHTML = (awayLogo ? '<img class="team-logo" src="' + awayLogo + '" alt="' + away + '">' : '') +
         '<div class="team-pick-info"><div class="team-pick-abbr">' + away + '</div>' +
@@ -2093,6 +2146,11 @@ async function fetchAndRenderSpreads(week) {
       homeBtn.dataset.game = i;
       homeBtn.setAttribute('data-state', 'idle');
       homeBtn.dataset.spread = homeSpread || '';
+      homeBtn.dataset.started = gameStarted ? '1' : '0';
+      if (gameStarted) {
+        homeBtn.classList.add('game-started');
+        homeBtn.style.pointerEvents = 'none';
+      }
       homeBtn.onclick = () => togglePick(home, i);
       homeBtn.innerHTML = (homeLogo ? '<img class="team-logo" src="' + homeLogo + '" alt="' + home + '">' : '') +
         '<div class="team-pick-info"><div class="team-pick-abbr">' + home + '</div>' +
@@ -3451,6 +3509,6 @@ async function loadWeeklyPicks() {
   </div>
 </div>
 
-<div class="version-badge">v0.8.4</div>
+<div class="version-badge">v0.8.5</div>
 </body>
 </html>
