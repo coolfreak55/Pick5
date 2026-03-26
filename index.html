@@ -1141,6 +1141,14 @@
   .wp-pick.loss { border-color: #e05555; background: rgba(224,85,85,0.12); }
   .wp-pick.win  img { filter: none; }
   .wp-pick.loss img { filter: grayscale(0.4); }
+  .wp-pick.hidden {
+    color: var(--muted);
+    border-color: rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.03);
+    font-size: 13px;
+    font-weight: 400;
+    letter-spacing: 0.03em;
+  }
 
   .wp-record {
     white-space: nowrap;
@@ -3969,20 +3977,34 @@ async function loadWeeklyPicks() {
         if (pick && pick.trim()) {
           const chip = document.createElement('span');
           chip.className = 'wp-pick';
-          const logo = getTeamLogo(pick);
-          if (logo) {
-            const img = document.createElement('img');
-            img.src = logo; img.alt = pick;
-            chip.appendChild(img);
-          }
           const spread = spreads[pi] || '';
-          chip.appendChild(document.createTextNode(pick + (spread ? ' ' + spread : '')));
 
-          // Check result from scoresMap
-          const result = getPickResult(pick, spread, scoresMap);
-          if (result === 'win')  { chip.classList.add('win');  wins++; }
-          else if (result === 'loss') { chip.classList.add('loss'); losses++; }
-          else { pending++; }
+          // Check if game has started from ESPN scores map
+          const pickAbbr = pick.trim().toUpperCase();
+          const gameData = scoresMap && scoresMap[pickAbbr];
+          const gameStarted = gameData && gameData.started;
+
+          if (!gameStarted) {
+            // Game not started — hide the pick
+            chip.classList.add('hidden');
+            chip.textContent = 'Not started';
+            pending++;
+          } else {
+            // Game started — show logo + pick + spread
+            const logo = getTeamLogo(pick);
+            if (logo) {
+              const img = document.createElement('img');
+              img.src = logo; img.alt = pick;
+              chip.appendChild(img);
+            }
+            chip.appendChild(document.createTextNode(pick + (spread ? ' ' + spread : '')));
+
+            // Only colour win/loss after game is final
+            const result = getPickResult(pick, spread, scoresMap);
+            if (result === 'win')       { chip.classList.add('win');  wins++; }
+            else if (result === 'loss') { chip.classList.add('loss'); losses++; }
+            else                        { pending++; }
+          }
 
           td.appendChild(chip);
         } else {
@@ -4238,6 +4260,6 @@ async function loadWeeklyPicks() {
   </div>
 </div>
 
-<div class="version-badge">v0.9.3</div>
+<div class="version-badge">v0.9.4</div>
 </body>
 </html>
