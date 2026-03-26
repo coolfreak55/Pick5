@@ -152,7 +152,7 @@
   .container { width: 100%; max-width: 680px; }
 
   #loginPage  { display: flex; }
-  #selectorPage, #myPicksPage, #scoresPage, #adminPage, #weeklyPicksPage, #resultsPage, #leaderboardPage { display: none; }
+  #selectorPage, #myPicksPage, #scoresPage, #adminPage, #weeklyPicksPage, #resultsPage, #leaderboardPage, #usersPage { display: none; }
 
   .pending-req-row {
     display: flex;
@@ -180,6 +180,41 @@
   }
   .btn-deny:disabled { opacity: 0.5; cursor: default; }
   .pending-none { color: var(--muted); font-size: 14px; padding: 8px 0; }
+
+  .user-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+  }
+  .user-row:last-child { border-bottom: none; }
+  .user-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--gold), #b8922a);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 700; color: #1a1a2e; flex-shrink: 0;
+  }
+  .user-info { flex: 1; min-width: 160px; }
+  .user-name { font-size: 15px; font-weight: 600; color: var(--text); }
+  .user-email { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .user-phone { font-size: 12px; color: var(--muted); }
+  .user-badge {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.05em;
+    padding: 2px 8px; border-radius: 10px; text-transform: uppercase;
+  }
+  .user-badge.admin { background: rgba(200,169,74,0.2); color: var(--gold); }
+  .user-badge.member { background: rgba(255,255,255,0.08); color: var(--muted); }
+  .btn-delete-user {
+    padding: 6px 14px; border-radius: 6px; border: none; cursor: pointer;
+    font-size: 13px; font-weight: 600;
+    background: rgba(255,80,80,0.15); color: #ff6b6b;
+    transition: background 0.15s;
+  }
+  .btn-delete-user:hover { background: rgba(255,80,80,0.3); }
+  .btn-delete-user:disabled { opacity: 0.4; cursor: default; }
+  .users-count { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
 
   /* ── LOGIN ── */
   header { text-align: center; margin-bottom: 48px; }
@@ -1449,6 +1484,7 @@
 </nav>
 <div id="adminCorner" style="display:none;position:fixed;bottom:12px;left:16px;z-index:999;">
   <button class="admin-corner-btn" onclick="showPage('admin')">⚙ Admin</button>
+  <button class="admin-corner-btn" style="margin-top:6px;" onclick="showPage('users')">👥 Users</button>
 </div>
 
 <!-- ═══ LOGIN PAGE ═══ -->
@@ -1714,6 +1750,19 @@
   window.fbDenyUser = async function(docId) {
     await deleteDoc(doc(db, "pendingUsers", docId));
   };
+
+  window.fbGetAllApprovedUsers = async function() {
+    try {
+      const snap = await getDocs(collection(db, "approvedUsers"));
+      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      docs.sort((a, b) => (a.teamName || '').localeCompare(b.teamName || ''));
+      return docs;
+    } catch(e) { console.error('fbGetAllApprovedUsers:', e); return []; }
+  };
+
+  window.fbDeleteApprovedUser = async function(docId) {
+    await deleteDoc(doc(db, "approvedUsers", docId));
+  };
 </script>
 
 <script>
@@ -1923,6 +1972,7 @@ async function showPage(page) {
   document.getElementById('weeklyPicksPage').style.display  = 'none';
   document.getElementById('resultsPage').style.display      = 'none';
   document.getElementById('leaderboardPage').style.display  = 'none';
+  document.getElementById('usersPage').style.display         = 'none';
 
   document.getElementById('navSelector').classList.remove('active');
   document.getElementById('navMyPicks').classList.remove('active');
@@ -1974,6 +2024,11 @@ async function showPage(page) {
     p.style.display = 'flex';
     p.classList.remove('fade-in'); void p.offsetWidth; p.classList.add('fade-in');
     loadAdminWeekOverride();
+  } else if (page === 'users') {
+    const p = document.getElementById('usersPage');
+    p.style.display = 'flex';
+    p.classList.remove('fade-in'); void p.offsetWidth; p.classList.add('fade-in');
+    loadUsersPage();
   }
 }
 
@@ -1989,6 +2044,7 @@ function logout() {
   document.getElementById('weeklyPicksPage').style.display  = 'none';
   document.getElementById('resultsPage').style.display      = 'none';
   document.getElementById('leaderboardPage').style.display  = 'none';
+  document.getElementById('usersPage').style.display         = 'none';
   stopWeekPolling();
   currentActiveWeek = null;
   document.getElementById('emailInput').value = '';
@@ -3017,6 +3073,77 @@ async function submitAccessRequest() {
   }
 }
 
+// ── Admin: Users Page ──
+async function loadUsersPage() {
+  const listEl    = document.getElementById('usersList');
+  const loadingEl = document.getElementById('usersLoading');
+  const countEl   = document.getElementById('usersCount');
+  if (!listEl) return;
+  loadingEl.style.display = 'block';
+  countEl.style.display   = 'none';
+  listEl.innerHTML = '';
+
+  const users = await fbGetAllApprovedUsers();
+  loadingEl.style.display = 'none';
+
+  if (users.length === 0) {
+    listEl.innerHTML = '<div class="pending-none">No approved users found.</div>';
+    return;
+  }
+
+  countEl.textContent = users.length + ' user' + (users.length !== 1 ? 's' : '');
+  countEl.style.display = 'block';
+
+  users.forEach(function(user) {
+    const row = document.createElement('div');
+    row.className = 'user-row';
+    row.id = 'user-row-' + user.id;
+    const initial = (user.teamName || user.email || '?')[0].toUpperCase();
+    const isAdmin = user.isAdmin === true;
+    const currentEmail = (document.getElementById('navEmail') ? document.getElementById('navEmail').dataset.email : '').toLowerCase();
+    const isSelf = user.email.toLowerCase() === currentEmail;
+
+    row.innerHTML =
+      '<div class="user-avatar">' + initial + '</div>' +
+      '<div class="user-info">' +
+        '<div class="user-name">' + (user.teamName || '—') + '</div>' +
+        '<div class="user-email">' + user.email + '</div>' +
+        (user.phone ? '<div class="user-phone">' + user.phone + '</div>' : '') +
+      '</div>' +
+      '<span class="user-badge ' + (isAdmin ? 'admin' : 'member') + '">' + (isAdmin ? 'Admin' : 'Member') + '</span>' +
+      (isSelf ? '' : '<button class="btn-delete-user" id="del-' + user.id + '" data-docid="' + user.id + '" data-email="' + user.email + '" onclick="handleDeleteUser(this)">Delete</button>');
+
+    listEl.appendChild(row);
+  });
+}
+
+async function handleDeleteUser(btn) {
+  const docId = btn.dataset.docid;
+  const email = btn.dataset.email;
+  if (!confirm('Delete user ' + email + '? This cannot be undone.')) return;
+  btn.disabled = true;
+  try {
+    await fbDeleteApprovedUser(docId);
+    const row = document.getElementById('user-row-' + docId);
+    if (row) {
+      row.style.opacity = '0.4';
+      row.innerHTML = '<div style="color:#ff6b6b;font-size:14px;padding:4px 0;">✗ ' + email + ' deleted</div>';
+      setTimeout(function() { row.remove(); updateUsersCount(); }, 1500);
+    }
+  } catch(e) {
+    alert('Error deleting user: ' + e.message);
+    if (btn) btn.disabled = false;
+  }
+}
+
+function updateUsersCount() {
+  const rows = document.querySelectorAll('#usersList .user-row');
+  const countEl = document.getElementById('usersCount');
+  if (countEl) {
+    countEl.textContent = rows.length + ' user' + (rows.length !== 1 ? 's' : '');
+  }
+}
+
 // ── Admin: Pending Requests ──
 async function loadPendingRequests() {
   const listEl    = document.getElementById('pendingRequestsList');
@@ -3805,6 +3932,22 @@ async function loadWeeklyPicks() {
   </div>
 </div>
 
-<div class="version-badge">v0.9.0</div>
+<div class="page with-nav" id="usersPage">
+  <div class="container">
+    <div class="page-header">
+      <div class="page-title">Users</div>
+      <div class="page-subtitle">Approved accounts</div>
+      <div class="page-divider"></div>
+    </div>
+    <div class="admin-card">
+      <div class="admin-card-title">👥 Approved Users</div>
+      <div id="usersLoading" style="color:var(--muted);font-size:14px;margin-bottom:8px;">Loading…</div>
+      <div id="usersCount" class="users-count" style="display:none;"></div>
+      <div id="usersList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="version-badge">v0.9.1</div>
 </body>
 </html>
