@@ -1458,6 +1458,14 @@
     .spread-vs {
       min-width: 80px;
     }
+    .game-in-progress::after {
+      font-size: 13px;
+      letter-spacing: 0.08em;
+    }
+    .game-final::after {
+      font-size: 13px;
+      letter-spacing: 0.08em;
+    }
   }
 
 
@@ -3111,7 +3119,7 @@ async function loadUsersPage() {
         (user.phone ? '<div class="user-phone">' + user.phone + '</div>' : '') +
       '</div>' +
       '<span class="user-badge ' + (isAdmin ? 'admin' : 'member') + '">' + (isAdmin ? 'Admin' : 'Member') + '</span>' +
-      (isSelf ? '' : '<button class="btn-delete-user" id="del-' + user.id + '" data-docid="' + user.id + '" data-email="' + user.email + '" onclick="handleDeleteUser(this)">Delete</button>');
+      (isSelf || isAdmin ? '' : '<button class="btn-delete-user" id="del-' + user.id + '" data-docid="' + user.id + '" data-email="' + user.email + '" onclick="handleDeleteUser(this)">Delete</button>');
 
     listEl.appendChild(row);
   });
@@ -3922,7 +3930,6 @@ async function loadWeeklyPicks() {
         <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;">
           <button class="btn-submit" style="flex:1;min-width:140px;" onclick="adminFetchAndSaveSpreads()">Fetch &amp; Save Spreads</button>
           <button class="btn-submit" style="flex:1;min-width:120px;background:linear-gradient(135deg,#4caf7d,#2e7d52);" onclick="adminSetSpreadsWeek()">Show This Week</button>
-          <button class="btn-clear" style="flex:1;min-width:100px;" onclick="adminHideSpreads()">Hide Graphic</button>
         </div>
         <div class="admin-status" id="adminFetchStatus"></div>
       </div>
@@ -3948,6 +3955,6 @@ async function loadWeeklyPicks() {
   </div>
 </div>
 
-<div class="version-badge">v0.9.1</div>
+<div class="version-badge">v0.9.2</div>
 </body>
 </html>
