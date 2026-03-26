@@ -154,6 +154,33 @@
   #loginPage  { display: flex; }
   #selectorPage, #myPicksPage, #scoresPage, #adminPage, #weeklyPicksPage, #resultsPage, #leaderboardPage { display: none; }
 
+  .pending-req-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+  }
+  .pending-req-row:last-child { border-bottom: none; }
+  .pending-req-info { flex: 1; min-width: 180px; }
+  .pending-req-email { font-size: 15px; font-weight: 600; color: var(--text); }
+  .pending-req-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .pending-req-actions { display: flex; gap: 8px; }
+  .btn-approve {
+    padding: 6px 16px; border-radius: 6px; border: none; cursor: pointer;
+    font-size: 13px; font-weight: 600;
+    background: linear-gradient(135deg, #4caf7d, #2e7d52); color: #fff;
+  }
+  .btn-approve:disabled { opacity: 0.5; cursor: default; }
+  .btn-deny {
+    padding: 6px 16px; border-radius: 6px; border: none; cursor: pointer;
+    font-size: 13px; font-weight: 600;
+    background: rgba(255,80,80,0.2); color: #ff6b6b;
+  }
+  .btn-deny:disabled { opacity: 0.5; cursor: default; }
+  .pending-none { color: var(--muted); font-size: 14px; padding: 8px 0; }
+
   /* ── LOGIN ── */
   header { text-align: center; margin-bottom: 48px; }
   .shield {
@@ -1475,6 +1502,10 @@
       <label>Team Name</label>
       <input type="text" id="requestTeamName" placeholder="e.g. Mike's Picks" maxlength="50" />
     </div>
+    <div class="field">
+      <label>Phone Number</label>
+      <input type="tel" id="requestPhone" placeholder="xxx-xxx-xxxx" maxlength="12" />
+    </div>
     <button class="btn-login" id="requestBtn" onclick="submitAccessRequest()">Submit Request</button>
     <div class="request-access-link" style="margin-top:12px;">
       <span onclick="closeRequestAccess()">← Back to Sign In</span>
@@ -1631,9 +1662,6 @@
 <script>
 // ── Constants ──
 const ADMIN_EMAILS     = ["jenowakoski@gmail.com", "wcgriffiths14@gmail.com"];
-const WAITING_APPROVAL_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRqX7XR41_5tR9RKRaMW7jokRKvxRCPtuxlSA5jUC8U9Btit3bq8G_K9EihipOzSGnwCVgmq8UHC3Hy/pub?gid=331008350&single=true&output=csv';
-const SHEET_CSV_URL    = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRqX7XR41_5tR9RKRaMW7jokRKvxRCPtuxlSA5jUC8U9Btit3bq8G_K9EihipOzSGnwCVgmq8UHC3Hy/pub?gid=0&single=true&output=csv';
-const ACCESS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwIqGCTovDWFrEVFcQQgk8LWRdr3ipzzIyA8wXV7KR6G_PuHV_AwjJw3V3xSm82aVXJ/exec';
 const PICKS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwSRseA76KhYoGki33yQ7O5MEGVOBdKYzYTAYSef88VBgoi2ymcWRvz3sZg5sqeIw/exec';
 const PICKS_DB_URL     = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS9-umRqGXfrl2flUZQ2pQaGaNT0FB8VsmjbFOs9Yjjh8PH2DaTGyAWEkEvWf5HUjHxgzyq7Z5XrvY2/pub?gid=0&single=true&output=csv';
 const SCORES_CSV_URL   = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTCZp0JY_6F3IQ_Uv7pRTTLRymDJ6NG8t9nT6KrFZ5pru7yZykoa5h2prW91r0x9kbej0aCZKHrSxH8/pub?gid=1564710724&single=true&output=csv';
@@ -1766,21 +1794,20 @@ async function handleLogin() {
   staEl.textContent = 'Checking credentials…';
 
   try {
-    const res = await fetch(SHEET_CSV_URL);
-    if (!res.ok) throw new Error('Sheet unreachable');
-    const text = await res.text();
-    const rows = parseCSV(text);
-    const dataRows = rows[0][0].toLowerCase().includes('email') ? rows.slice(1) : rows;
-    const match = dataRows.find(r =>
-      r[0] && r[0].toLowerCase() === email && r[1] && r[1] === pin
-    );
-    if (match) {
+    const user = await fbGetApprovedUser(email);
+    if (user && user.pin === pin) {
       staEl.textContent = '';
-      const teamName = (match[2] || '').trim();
-      afterLogin(email, teamName);
+      afterLogin(email, user.teamName || '');
+    } else if (user) {
+      showError('Incorrect PIN. Please try again.');
     } else {
-      const emailExists = dataRows.some(r => r[0] && r[0].toLowerCase() === email);
-      showError(emailExists ? 'Incorrect PIN. Please try again.' : 'This email is not on the approved list.');
+      // Check if pending
+      const pending = await fbGetPendingUser(email);
+      if (pending) {
+        showError('Your request is pending approval. Check back soon!');
+      } else {
+        showError('This email is not on the approved list.');
+      }
     }
   } catch(err) {
     showError('Unable to verify credentials. Please try again.');
@@ -1884,6 +1911,7 @@ async function showPage(page) {
     document.getElementById('navScores').classList.add('active');
     initScores();
   } else if (page === 'admin') {
+    loadPendingRequests();
     const p = document.getElementById('adminPage');
     p.style.display = 'flex';
     p.classList.remove('fade-in'); void p.offsetWidth; p.classList.add('fade-in');
@@ -2841,6 +2869,7 @@ function openRequestAccess() {
   document.getElementById('requestEmail').value = '';
   document.getElementById('requestPin').value = '';
   document.getElementById('requestTeamName').value = '';
+  document.getElementById('requestPhone').value = '';
   document.getElementById('requestErrorMsg').classList.remove('show');
   document.getElementById('requestStatusMsg').textContent = '';
 }
@@ -2853,13 +2882,14 @@ async function submitAccessRequest() {
   const email    = document.getElementById('requestEmail').value.trim().toLowerCase();
   const pin      = document.getElementById('requestPin').value.trim();
   const teamName = document.getElementById('requestTeamName').value.trim();
+  const phone    = document.getElementById('requestPhone').value.trim();
   const btn      = document.getElementById('requestBtn');
   const errEl    = document.getElementById('requestErrorMsg');
   const staEl    = document.getElementById('requestStatusMsg');
 
   errEl.classList.remove('show');
 
-  if (!email || !pin || !teamName) {
+  if (!email || !pin || !teamName || !phone) {
     errEl.textContent = 'Please fill out all fields.';
     errEl.classList.add('show');
     return;
@@ -2871,54 +2901,43 @@ async function submitAccessRequest() {
     return;
   }
 
+  // Enforce US phone format xxx-xxx-xxxx
+  const phoneRegex = /^\d{3}-\d{3}-\d{4}$/;
+  if (!phoneRegex.test(phone)) {
+    errEl.textContent = 'Phone must be in format xxx-xxx-xxxx.';
+    errEl.classList.add('show');
+    return;
+  }
+
   btn.disabled = true;
   staEl.textContent = 'Checking email…';
 
   try {
-    // Check approved list and waiting approval list in parallel
-    const [approvedRes, waitingRes] = await Promise.all([
-      fetch(SHEET_CSV_URL + '&cachebust=' + Date.now()),
-      fetch(WAITING_APPROVAL_URL + '&cachebust=' + Date.now())
+    // Check if already approved or pending
+    const [existingApproved, existingPending] = await Promise.all([
+      fbGetApprovedUser(email),
+      fbGetPendingUser(email)
     ]);
 
-    if (approvedRes.ok) {
-      const text = await approvedRes.text();
-      const rows = parseCSV(text);
-      const dataRows = rows[0][0].toLowerCase().includes('email') ? rows.slice(1) : rows;
-      const alreadyApproved = dataRows.some(r => r[0] && r[0].toLowerCase() === email);
-      if (alreadyApproved) {
-        errEl.textContent = 'This email already has an approved account. Try logging in!';
-        errEl.classList.add('show');
-        btn.disabled = false;
-        staEl.textContent = '';
-        return;
-      }
+    if (existingApproved) {
+      errEl.textContent = 'This email already has an approved account. Try logging in!';
+      errEl.classList.add('show');
+      btn.disabled = false;
+      staEl.textContent = '';
+      return;
     }
 
-    if (waitingRes.ok) {
-      const text = await waitingRes.text();
-      const rows = parseCSV(text);
-      const dataRows = rows[0][0].toLowerCase().includes('email') ? rows.slice(1) : rows;
-      const alreadyWaiting = dataRows.some(r => r[0] && r[0].toLowerCase() === email);
-      if (alreadyWaiting) {
-        errEl.textContent = 'This email already has a pending request. Please wait for approval!';
-        errEl.classList.add('show');
-        btn.disabled = false;
-        staEl.textContent = '';
-        return;
-      }
+    if (existingPending) {
+      errEl.textContent = 'This email already has a pending request. Please wait for approval!';
+      errEl.classList.add('show');
+      btn.disabled = false;
+      staEl.textContent = '';
+      return;
     }
 
     staEl.textContent = 'Submitting request…';
 
-    // Force PIN to be sent as a string with a tab prefix trick to preserve leading zeros
-    // We prefix with an apostrophe so Apps Script writes it as text
-    await fetch(ACCESS_SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, pin: String(pin), teamName })
-    });
+    await fbSavePendingUser({ email, pin: String(pin), teamName, phone });
 
     staEl.textContent = '';
     btn.textContent = 'Request Sent ✓';
@@ -2940,6 +2959,148 @@ async function submitAccessRequest() {
   }
 }
 
+<<<<<<< Updated upstream
+=======
+// ── Firebase Auth Helpers ──
+async function fbGetApprovedUser(email) {
+  try {
+    const snap = await firebase.firestore()
+      .collection('approvedUsers')
+      .where('email', '==', email.toLowerCase())
+      .limit(1)
+      .get();
+    if (snap.empty) return null;
+    return { id: snap.docs[0].id, ...snap.docs[0].data() };
+  } catch(e) { console.error('fbGetApprovedUser:', e); return null; }
+}
+
+async function fbGetPendingUser(email) {
+  try {
+    const snap = await firebase.firestore()
+      .collection('pendingUsers')
+      .where('email', '==', email.toLowerCase())
+      .limit(1)
+      .get();
+    if (snap.empty) return null;
+    return { id: snap.docs[0].id, ...snap.docs[0].data() };
+  } catch(e) { console.error('fbGetPendingUser:', e); return null; }
+}
+
+async function fbSavePendingUser(data) {
+  await firebase.firestore().collection('pendingUsers').add({
+    email:       data.email.toLowerCase(),
+    pin:         String(data.pin),
+    teamName:    data.teamName,
+    phone:       data.phone,
+    requestedAt: new Date().toISOString()
+  });
+}
+
+async function fbGetAllPendingUsers() {
+  try {
+    const snap = await firebase.firestore()
+      .collection('pendingUsers')
+      .orderBy('requestedAt', 'asc')
+      .get();
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch(e) { console.error('fbGetAllPendingUsers:', e); return []; }
+}
+
+async function fbApproveUser(docId) {
+  const db = firebase.firestore();
+  const pendingRef = db.collection('pendingUsers').doc(docId);
+  const snap = await pendingRef.get();
+  if (!snap.exists) throw new Error('Pending user not found');
+  const data = snap.data();
+  await db.collection('approvedUsers').add({
+    email:    data.email,
+    pin:      data.pin,
+    teamName: data.teamName,
+    phone:    data.phone || '',
+    isAdmin:  false
+  });
+  await pendingRef.delete();
+}
+
+async function fbDenyUser(docId) {
+  await firebase.firestore().collection('pendingUsers').doc(docId).delete();
+}
+
+// ── Admin: Pending Requests ──
+async function loadPendingRequests() {
+  const listEl    = document.getElementById('pendingRequestsList');
+  const loadingEl = document.getElementById('pendingRequestsLoading');
+  if (!listEl) return;
+  loadingEl.style.display = 'block';
+  listEl.innerHTML = '';
+
+  const pending = await fbGetAllPendingUsers();
+  loadingEl.style.display = 'none';
+
+  if (pending.length === 0) {
+    listEl.innerHTML = '<div class="pending-none">No pending requests.</div>';
+    return;
+  }
+
+  pending.forEach(function(user) {
+    const row = document.createElement('div');
+    row.className = 'pending-req-row';
+    row.id = 'pending-row-' + user.id;
+    const ts = user.requestedAt ? new Date(user.requestedAt).toLocaleDateString() : '';
+    row.innerHTML = \`
+      <div class="pending-req-info">
+        <div class="pending-req-email">\${user.email}</div>
+        <div class="pending-req-meta">\${user.teamName || '—'} &nbsp;·&nbsp; \${user.phone || '—'} \${ts ? '&nbsp;·&nbsp; ' + ts : ''}</div>
+      </div>
+      <div class="pending-req-actions">
+        <button class="btn-approve" id="approve-\${user.id}" onclick="handleApprove('\${user.id}')">Approve</button>
+        <button class="btn-deny"    id="deny-\${user.id}"    onclick="handleDeny('\${user.id}')">Deny</button>
+      </div>
+    \`;
+    listEl.appendChild(row);
+  });
+}
+
+async function handleApprove(docId) {
+  const approveBtn = document.getElementById('approve-' + docId);
+  const denyBtn    = document.getElementById('deny-'    + docId);
+  if (approveBtn) approveBtn.disabled = true;
+  if (denyBtn)    denyBtn.disabled    = true;
+  try {
+    await fbApproveUser(docId);
+    const row = document.getElementById('pending-row-' + docId);
+    if (row) {
+      row.innerHTML = '<div class="pending-req-info"><div class="pending-req-email" style="color:#4caf7d;">✓ Approved</div></div>';
+      setTimeout(() => row.remove(), 1500);
+    }
+  } catch(e) {
+    alert('Error approving user: ' + e.message);
+    if (approveBtn) approveBtn.disabled = false;
+    if (denyBtn)    denyBtn.disabled    = false;
+  }
+}
+
+async function handleDeny(docId) {
+  if (!confirm('Deny and delete this request?')) return;
+  const approveBtn = document.getElementById('approve-' + docId);
+  const denyBtn    = document.getElementById('deny-'    + docId);
+  if (approveBtn) approveBtn.disabled = true;
+  if (denyBtn)    denyBtn.disabled    = true;
+  try {
+    await fbDenyUser(docId);
+    const row = document.getElementById('pending-row-' + docId);
+    if (row) {
+      row.innerHTML = '<div class="pending-req-info"><div class="pending-req-email" style="color:#ff6b6b;">✗ Denied</div></div>';
+      setTimeout(() => row.remove(), 1500);
+    }
+  } catch(e) {
+    alert('Error denying user: ' + e.message);
+    if (approveBtn) approveBtn.disabled = false;
+    if (denyBtn)    denyBtn.disabled    = false;
+  }
+}
+
+>>>>>>> Stashed changes
 // ── Scores Map for Weekly Picks W/L (ESPN) ──
 async function fetchScoresMap(week) {
   return await fetchESPNScoresMap(week);
@@ -3595,6 +3756,14 @@ async function loadWeeklyPicks() {
       <div class="page-title">Admin</div>
       <div class="page-subtitle">Site controls</div>
       <div class="page-divider"></div>
+    </div>
+
+    <!-- Pending Access Requests -->
+    <div class="admin-card" id="pendingRequestsCard">
+      <div class="admin-card-title">🔔 Pending Access Requests</div>
+      <p class="admin-card-desc">Users who have requested access are listed below. Approve to create their account or Deny to remove the request.</p>
+      <div id="pendingRequestsLoading" style="color:var(--muted);font-size:14px;margin-bottom:8px;">Loading…</div>
+      <div id="pendingRequestsList"></div>
     </div>
 
     <!-- Spreads Week Picker -->
