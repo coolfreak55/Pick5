@@ -397,7 +397,7 @@
   .container { width: 100%; max-width: 680px; }
 
   #loginPage  { display: flex; }
-  #selectorPage, #myPicksPage, #scoresPage, #adminPage, #weeklyPicksPage, #resultsPage, #leaderboardPage, #usersPage, #teamDataPage, #rulesPage { display: none; }
+  #selectorPage, #myPicksPage, #scoresPage, #adminPage, #weeklyPicksPage, #resultsPage, #leaderboardPage, #usersPage, #teamDataPage, #rulesPage, #recordsPage { display: none; }
 
   .pending-req-row {
     display: flex;
@@ -1861,6 +1861,78 @@
     font-size: 14px;
   }
 
+
+  /* ── RECORDS PAGE ── */
+  .records-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .records-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  .records-table th {
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 2px solid var(--border);
+    white-space: nowrap;
+  }
+  .records-table td {
+    padding: 14px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    vertical-align: top;
+  }
+  [data-theme="light"] .records-table td { border-bottom-color: var(--border); }
+  [data-theme="light"] .records-table th { border-bottom-color: var(--border); }
+  .records-table tr:last-child td { border-bottom: none; }
+  .records-table tr:hover td { background: rgba(255,255,255,0.02); }
+  [data-theme="light"] .records-table tr:hover td { background: rgba(0,0,0,0.02); }
+  .record-label {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent);
+    white-space: nowrap;
+    width: 1%;
+    padding-right: 20px;
+  }
+  .record-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+  .record-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.04);
+    color: var(--text);
+    white-space: nowrap;
+  }
+  [data-theme="light"] .record-chip { background: #f0f2f8; }
+  .record-chip.gold   { border-color: #c8a94a; background: rgba(200,169,74,0.12); color: var(--accent); }
+  .record-chip.silver { border-color: #9aa0b0; background: rgba(154,160,176,0.12); color: #b0b8cc; }
+  .record-chip.bronze { border-color: #cd7f32; background: rgba(205,127,50,0.12);  color: #cd7f32; }
+  .record-chip.poop   { border-color: rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); color: var(--muted); }
+  [data-theme="light"] .record-chip.silver { color: #7a8399; }
+  [data-theme="light"] .record-chip.poop   { color: var(--muted); }
+  .record-chip-count {
+    font-size: 11px;
+    opacity: 0.75;
+    font-weight: 700;
+  }
+
 </style>
 </head>
 <body>
@@ -1877,6 +1949,7 @@
     <button class="nav-link" id="navLeaderboard" onclick="showPage('leaderboard')">Leaderboard</button>
     <button class="nav-link" id="navTeamData" onclick="showPage('teamData')">Team Data</button>
     <button class="nav-link" id="navRules" onclick="showPage('rules')">Rules</button>
+    <button class="nav-link" id="navRecords" onclick="showPage('records')">Records</button>
   </div>
   <div class="nav-right">
     <span class="nav-user">Signed in as <strong id="navEmail" data-email="" data-teamname=""></strong></span>
@@ -2174,6 +2247,7 @@ const PICKS_DB_URL     = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS9-um
 const SCORES_CSV_URL   = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTCZp0JY_6F3IQ_Uv7pRTTLRymDJ6NG8t9nT6KrFZ5pru7yZykoa5h2prW91r0x9kbej0aCZKHrSxH8/pub?gid=1564710724&single=true&output=csv';
 const SPREADS_CSV_URL  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTCZp0JY_6F3IQ_Uv7pRTTLRymDJ6NG8t9nT6KrFZ5pru7yZykoa5h2prW91r0x9kbej0aCZKHrSxH8/pub?gid=1821550063&single=true&output=csv';
 const RULES_CSV_URL    = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSrOK6gU_IKZDjDFPVzPS4feK73hhXXbD1EOWkvcJ_LpUwhD_8K5iyb22Q4kuORdEfQeSCtvKM4GI2Z/pub?gid=0&single=true&output=csv';
+const RECORDS_CSV_URL  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSTcWtbkGMN74uo2xuM96N9_MATwWbS9AJfl_rx3KJehBxmxfuSk1dxtkkgkKIlIAWosw694VohcU7P/pub?gid=0&single=true&output=csv';
 
 // ── Scores state ──
 let scoresWeek = null;
@@ -2379,6 +2453,7 @@ async function showPage(page) {
   document.getElementById('usersPage').style.display         = 'none';
   document.getElementById('teamDataPage').style.display       = 'none';
   document.getElementById('rulesPage').style.display          = 'none';
+  document.getElementById('recordsPage').style.display        = 'none';
 
   document.getElementById('navSelector').classList.remove('active');
   document.getElementById('navMyPicks').classList.remove('active');
@@ -2388,6 +2463,7 @@ async function showPage(page) {
   document.getElementById('navLeaderboard').classList.remove('active');
   document.getElementById('navTeamData').classList.remove('active');
   document.getElementById('navRules').classList.remove('active');
+  document.getElementById('navRecords').classList.remove('active');
   clearInterval(scoresRefreshTimer);
 
   if (page === 'selector') {
@@ -2450,6 +2526,12 @@ async function showPage(page) {
     p.classList.remove('fade-in'); void p.offsetWidth; p.classList.add('fade-in');
     document.getElementById('navRules').classList.add('active');
     loadRules();
+  } else if (page === 'records') {
+    const p = document.getElementById('recordsPage');
+    p.style.display = 'flex';
+    p.classList.remove('fade-in'); void p.offsetWidth; p.classList.add('fade-in');
+    document.getElementById('navRecords').classList.add('active');
+    loadRecords();
   }
 }
 
@@ -2470,6 +2552,7 @@ function logout() {
   document.getElementById('usersPage').style.display         = 'none';
   document.getElementById('teamDataPage').style.display       = 'none';
   document.getElementById('rulesPage').style.display          = 'none';
+  document.getElementById('recordsPage').style.display        = 'none';
   stopWeekPolling();
   currentActiveWeek = null;
   document.getElementById('emailInput').value = '';
@@ -3878,6 +3961,109 @@ function initSettings() {
 // Init on load
 initSettings();
 
+// ── Records Page ──
+async function loadRecords() {
+  const contentEl = document.getElementById('recordsContent');
+  if (!contentEl) return;
+  contentEl.innerHTML = '<div class="rules-loading">Loading records…</div>';
+
+  try {
+    const res = await fetch(RECORDS_CSV_URL + '&cachebust=' + Date.now());
+    if (!res.ok) throw new Error('Failed to fetch');
+    const text = await res.text();
+    const rows = parseCSV(text);
+
+    const records = rows
+      .map(function(row) {
+        return {
+          label: (row[0] || '').trim(),
+          value: (row[1] || '').trim()
+        };
+      })
+      .filter(function(r) { return r.label && r.value; });
+
+    if (records.length === 0) {
+      contentEl.innerHTML = '<div class="rules-loading">No records found.</div>';
+      return;
+    }
+
+    const wrap = document.createElement('div');
+    wrap.className = 'records-table-wrap';
+    const table = document.createElement('table');
+    table.className = 'records-table';
+
+    // Header
+    const thead = document.createElement('thead');
+    thead.innerHTML = '<tr><th>Record</th><th>Leaders</th></tr>';
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+
+    records.forEach(function(record) {
+      // Parse "Team(5), Team2(4), Team3(4)" into sorted entries
+      const entries = [];
+      const regex = /([^,(]+)\((\d+)\)/g;
+      let m;
+      while ((m = regex.exec(record.value)) !== null) {
+        entries.push({ name: m[1].trim(), count: parseInt(m[2]) });
+      }
+      // Sort descending by count
+      entries.sort(function(a, b) { return b.count - a.count; });
+
+      const maxCount = entries.length > 0 ? entries[0].count : 0;
+      const minCount = entries.length > 0 ? entries[entries.length - 1].count : 0;
+
+      // Determine tier counts for medal assignment
+      const uniqueCounts = [...new Set(entries.map(function(e) { return e.count; }))].sort(function(a,b){return b-a;});
+
+      const tr = document.createElement('tr');
+
+      // Label cell
+      const labelTd = document.createElement('td');
+      labelTd.className = 'record-label';
+      labelTd.textContent = record.label;
+      tr.appendChild(labelTd);
+
+      // Chips cell
+      const chipsTd = document.createElement('td');
+      const chipsDiv = document.createElement('div');
+      chipsDiv.className = 'record-chips';
+
+      entries.forEach(function(entry) {
+        const rank = uniqueCounts.indexOf(entry.count);
+        const isLast = entry.count === minCount && entries.length > 1;
+        let chipClass = '';
+        let emoji = '';
+        if (rank === 0)                       { chipClass = 'gold';   emoji = '🥇'; }
+        else if (rank === 1)                  { chipClass = 'silver'; emoji = '🥈'; }
+        else if (rank === 2)                  { chipClass = 'bronze'; emoji = '🥉'; }
+        else if (isLast && uniqueCounts.length > 3) { chipClass = 'poop'; emoji = '💩'; }
+
+        const chip = document.createElement('span');
+        chip.className = 'record-chip' + (chipClass ? ' ' + chipClass : '');
+        chip.innerHTML =
+          (emoji ? '<span>' + emoji + '</span>' : '') +
+          '<span>' + entry.name + '</span>' +
+          '<span class="record-chip-count">(' + entry.count + ')</span>';
+        chipsDiv.appendChild(chip);
+      });
+
+      chipsTd.appendChild(chipsDiv);
+      tr.appendChild(chipsTd);
+      tbody.appendChild(tr);
+    });
+
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    contentEl.innerHTML = '';
+    contentEl.appendChild(wrap);
+
+  } catch(e) {
+    contentEl.innerHTML = '<div class="rules-error">Failed to load records. Please try again.</div>';
+    console.error('Records fetch error:', e);
+  }
+}
+
 // ── Rules Page ──
 async function loadRules() {
   const contentEl = document.getElementById('rulesContent');
@@ -4688,6 +4874,19 @@ async function loadWeeklyPicks() {
     <input class="team-data-search" id="teamDataSearch" type="text" placeholder="Search teams…" oninput="filterTeamCards()" />
     <div id="teamDataContent">
       <div class="team-data-loading">Loading team data…</div>
+    </div>
+  </div>
+</div>
+
+<div class="page with-nav" id="recordsPage">
+  <div class="container" style="max-width:900px;">
+    <div class="page-header">
+      <div class="page-title">Records</div>
+      <div class="page-subtitle">All-time league records</div>
+      <div class="page-divider"></div>
+    </div>
+    <div class="admin-card">
+      <div id="recordsContent"><div class="rules-loading">Loading records…</div></div>
     </div>
   </div>
 </div>
