@@ -2138,6 +2138,7 @@ let scoresRefreshTimer = null;
 
 // ── Week polling ──
 let weekPollTimer = null;
+let pollingEnabled = localStorage.getItem('pick5-polling') !== 'off';
 let currentActiveWeek = null;
 
 // ── Picks state ──
@@ -2317,7 +2318,7 @@ function afterLogin(email, teamName) {
     } catch(e) {}
     await updateWeekBadge();
     await showPage('selector');
-    startWeekPolling();
+    if (pollingEnabled) startWeekPolling();
   })();
 }
 
@@ -2380,6 +2381,7 @@ async function showPage(page) {
     initScores();
   } else if (page === 'admin') {
     loadPendingRequests();
+    initPollingToggle();
     const p = document.getElementById('adminPage');
     p.style.display = 'flex';
     p.classList.remove('fade-in'); void p.offsetWidth; p.classList.add('fade-in');
@@ -3303,8 +3305,36 @@ function setAdminStatus(msg, type) {
 
 // ── Weekly Picks ──
 // ── Week Polling ──
+// ── Polling toggle ──
+function handlePollingToggle(enabled) {
+  pollingEnabled = enabled;
+  localStorage.setItem('pick5-polling', enabled ? 'on' : 'off');
+  const label  = document.getElementById('pollingToggleLabel');
+  const status = document.getElementById('pollingStatus');
+  if (enabled) {
+    label.textContent  = 'Polling enabled';
+    status.textContent = 'Checking Firebase every 30s';
+    startWeekPolling();
+  } else {
+    label.textContent  = 'Polling disabled';
+    status.textContent = 'No automatic week detection';
+    stopWeekPolling();
+  }
+}
+
+function initPollingToggle() {
+  const checkbox = document.getElementById('pollingToggle');
+  if (!checkbox) return;
+  checkbox.checked = pollingEnabled;
+  const label  = document.getElementById('pollingToggleLabel');
+  const status = document.getElementById('pollingStatus');
+  label.textContent  = pollingEnabled ? 'Polling enabled'  : 'Polling disabled';
+  status.textContent = pollingEnabled ? 'Checking Firebase every 30s' : 'No automatic week detection';
+}
+
 function startWeekPolling() {
   stopWeekPolling();
+  if (!pollingEnabled) return;
   weekPollTimer = setInterval(async function() {
     try {
       const week = window.fbGetSpreadsWeek ? await window.fbGetSpreadsWeek() : null;
@@ -4471,6 +4501,20 @@ async function loadWeeklyPicks() {
       <p class="admin-card-desc">Users who have requested access are listed below. Approve to create their account or Deny to remove the request.</p>
       <div id="pendingRequestsLoading" style="color:var(--muted);font-size:14px;margin-bottom:8px;">Loading…</div>
       <div id="pendingRequestsList"></div>
+    </div>
+
+    <!-- Week Polling Toggle -->
+    <div class="admin-card">
+      <div class="admin-card-title">🔄 Week Polling</div>
+      <p class="admin-card-desc">When enabled, the app checks Firebase every 30 seconds to detect week changes and auto-updates all users' pages. Disable to reduce Firestore reads.</p>
+      <div style="display:flex;align-items:center;gap:14px;margin-top:12px;">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;">
+          <input type="checkbox" id="pollingToggle" onchange="handlePollingToggle(this.checked)"
+            style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer;" />
+          <span style="font-size:14px;color:var(--text);font-weight:600;" id="pollingToggleLabel">Polling disabled</span>
+        </label>
+        <span style="font-size:12px;color:var(--muted);" id="pollingStatus"></span>
+      </div>
     </div>
 
     <!-- Spreads Week Picker -->
