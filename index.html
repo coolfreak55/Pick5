@@ -1756,13 +1756,13 @@
     flex-shrink: 0;
   }
   .team-data-name {
-    font-size: 17px;
+    font-size: 19px;
     font-weight: 700;
     color: var(--accent);
     line-height: 1.2;
   }
   .team-data-inception {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--muted);
     margin-top: 2px;
   }
@@ -1776,19 +1776,19 @@
   }
   .team-data-row:last-child { border-bottom: none; }
   .team-data-label {
-    font-size: 12px;
+    font-size: 14px;
     color: #fff;
     flex: 1;
   }
   .team-data-value {
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 600;
     color: #fff;
     text-align: right;
   }
   .team-data-value.highlight { color: var(--accent); }
   .team-data-section-head {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -4556,6 +4556,46 @@ async function loadWeeklyPicks() {
     ]);
     loadingEl.style.display = 'none';
 
+    // Populate tiebreaker widget from spread data
+    (async function() {
+      try {
+        const weekKey = week.toString().replace(/[^a-zA-Z0-9]/g, '_');
+        const savedData = window.fbGetSpreadData ? await window.fbGetSpreadData(weekKey) : null;
+        const widget = document.getElementById('wpTiebreakerWidget');
+        if (savedData && savedData.games && savedData.games.length > 0) {
+          const lastGame = savedData.games[savedData.games.length - 1];
+          const away = (lastGame.away || '').toUpperCase();
+          const home = (lastGame.home || '').toUpperCase();
+          const gameData = scoresMap && (scoresMap[away] || scoresMap[home]);
+
+          document.getElementById('wpTbMatchup').textContent = away + ' @ ' + home;
+
+          if (gameData && gameData.started) {
+            const awayScore = scoresMap[away] ? scoresMap[away].awayScore : (scoresMap[home] ? scoresMap[home].awayScore : 0);
+            const homeScore = scoresMap[home] ? scoresMap[home].homeScore : (scoresMap[away] ? scoresMap[away].homeScore : 0);
+            const total = awayScore + homeScore;
+            document.getElementById('wpTbScore').textContent = awayScore + ' – ' + homeScore;
+            document.getElementById('wpTbTotal').textContent = 'Total: ' + total + ' pts';
+            if (gameData.isFinal) {
+              document.getElementById('wpTbStatus').textContent = '✓ Final';
+              document.getElementById('wpTbStatus').style.color = '#4caf7d';
+            } else {
+              const clock = gameData.clock ? gameData.clock + ' · ' : '';
+              const period = gameData.period ? 'Q' + gameData.period : 'In Progress';
+              document.getElementById('wpTbStatus').textContent = '● ' + clock + period;
+              document.getElementById('wpTbStatus').style.color = '#4caf7d';
+            }
+          } else {
+            document.getElementById('wpTbScore').textContent = '— – —';
+            document.getElementById('wpTbStatus').textContent = 'Not started';
+            document.getElementById('wpTbStatus').style.color = 'var(--muted)';
+            document.getElementById('wpTbTotal').textContent = '';
+          }
+          if (widget) widget.style.display = 'block';
+        }
+      } catch(e) { console.error('TB widget error:', e); }
+    })();
+
     if (allPicks.length === 0) {
       tableEl.innerHTML = '<div class="wp-empty">No picks submitted yet for ' + weekLabel + '.</div>';
       return;
@@ -4702,9 +4742,20 @@ async function loadWeeklyPicks() {
 <div class="page with-nav" id="weeklyPicksPage">
   <div class="container" style="max-width:900px;">
     <div class="page-header">
-      <div class="page-title">Weekly Picks</div>
-      <div class="page-subtitle" id="weeklyPicksSubtitle">Loading…</div>
-      <div class="page-divider"></div>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <div>
+          <div class="page-title">Weekly Picks</div>
+          <div class="page-subtitle" id="weeklyPicksSubtitle">Loading…</div>
+          <div class="page-divider"></div>
+        </div>
+        <div id="wpTiebreakerWidget" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px;min-width:180px;text-align:right;">
+          <div style="font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Tiebreaker Game</div>
+          <div id="wpTbMatchup" style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.08em;color:var(--text);"></div>
+          <div id="wpTbScore" style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:0.06em;color:var(--accent);line-height:1;margin:2px 0;"></div>
+          <div id="wpTbStatus" style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);"></div>
+          <div id="wpTbTotal" style="font-size:12px;color:var(--muted);margin-top:3px;"></div>
+        </div>
+      </div>
     </div>
     <div id="weeklyPicksLoading" class="picks-loading">
       <div class="loading-spinner"></div>
@@ -4963,6 +5014,6 @@ async function loadWeeklyPicks() {
   </div>
 </div>
 
-<div class="version-badge">v0.9.6</div>
+<div class="version-badge">v0.9.7</div>
 </body>
 </html>
