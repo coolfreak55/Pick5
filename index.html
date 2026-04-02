@@ -1862,6 +1862,29 @@
   }
 
 
+
+  @media (max-width: 560px) {
+    #streakCardsGrid { grid-template-columns: 1fr !important; }
+  }
+  .streak-row {
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .streak-row:last-child { border-bottom: none; }
+  [data-theme="light"] .streak-row { border-bottom-color: var(--border); }
+  .streak-header {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+  .streak-teams {
+    font-size: 14px;
+    color: var(--text);
+    line-height: 1.6;
+  }
+
   /* ── RECORDS PAGE ── */
   .records-table-wrap {
     overflow-x: auto;
@@ -2248,6 +2271,8 @@ const SCORES_CSV_URL   = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTCZp0
 const SPREADS_CSV_URL  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTCZp0JY_6F3IQ_Uv7pRTTLRymDJ6NG8t9nT6KrFZ5pru7yZykoa5h2prW91r0x9kbej0aCZKHrSxH8/pub?gid=1821550063&single=true&output=csv';
 const RULES_CSV_URL    = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSrOK6gU_IKZDjDFPVzPS4feK73hhXXbD1EOWkvcJ_LpUwhD_8K5iyb22Q4kuORdEfQeSCtvKM4GI2Z/pub?gid=0&single=true&output=csv';
 const RECORDS_CSV_URL  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSTcWtbkGMN74uo2xuM96N9_MATwWbS9AJfl_rx3KJehBxmxfuSk1dxtkkgkKIlIAWosw694VohcU7P/pub?gid=0&single=true&output=csv';
+const RECORDS_50_URL   = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSTcWtbkGMN74uo2xuM96N9_MATwWbS9AJfl_rx3KJehBxmxfuSk1dxtkkgkKIlIAWosw694VohcU7P/pub?gid=1052040533&single=true&output=csv';
+const RECORDS_05_URL   = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSTcWtbkGMN74uo2xuM96N9_MATwWbS9AJfl_rx3KJehBxmxfuSk1dxtkkgkKIlIAWosw694VohcU7P/pub?gid=1091673866&single=true&output=csv';
 
 // ── Scores state ──
 let scoresWeek = null;
@@ -2532,6 +2557,7 @@ async function showPage(page) {
     p.classList.remove('fade-in'); void p.offsetWidth; p.classList.add('fade-in');
     document.getElementById('navRecords').classList.add('active');
     loadRecords();
+    loadStreakCards();
   }
 }
 
@@ -4020,6 +4046,52 @@ async function loadRecords() {
   }
 }
 // ── Rules Page ──
+
+// ── Streak Cards (5-0 and 0-5) ──
+async function loadStreakCards() {
+  await Promise.all([
+    loadStreakSection(RECORDS_50_URL, 'streak50Content'),
+    loadStreakSection(RECORDS_05_URL, 'streak05Content')
+  ]);
+}
+
+async function loadStreakSection(url, elId) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.innerHTML = '<div class="rules-loading">Loading...</div>';
+  try {
+    const res = await fetch(url + '&cachebust=' + Date.now());
+    if (!res.ok) throw new Error('Failed to fetch');
+    const text = await res.text();
+    const rows = parseCSV(text);
+    const data = rows.filter(function(r) { return r[0] && r[0].trim(); });
+    if (data.length === 0) {
+      el.innerHTML = '<div class="rules-loading">No data found.</div>';
+      return;
+    }
+    el.innerHTML = '';
+    data.forEach(function(row) {
+      const header = (row[0] || '').trim();
+      const teams = row.slice(1).map(function(t) { return t.trim(); }).filter(Boolean);
+      if (!header) return;
+      const div = document.createElement('div');
+      div.className = 'streak-row';
+      const h = document.createElement('div');
+      h.className = 'streak-header';
+      h.textContent = header;
+      const t = document.createElement('div');
+      t.className = 'streak-teams';
+      t.textContent = teams.join(', ') || '—';
+      div.appendChild(h);
+      div.appendChild(t);
+      el.appendChild(div);
+    });
+  } catch(e) {
+    el.innerHTML = '<div class="rules-error">Failed to load.</div>';
+    console.error(e);
+  }
+}
+
 async function loadRules() {
   const contentEl = document.getElementById('rulesContent');
   if (!contentEl) return;
@@ -4842,6 +4914,18 @@ async function loadWeeklyPicks() {
     </div>
     <div class="admin-card">
       <div id="recordsContent"><div class="rules-loading">Loading records…</div></div>
+    </div>
+
+    <!-- 5-0 and 0-5 streak cards -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px;" id="streakCardsGrid">
+      <div class="admin-card" style="margin-bottom:0;">
+        <div class="admin-card-title" style="margin-bottom:14px;">🏆 5-0 Weeks</div>
+        <div id="streak50Content"><div class="rules-loading">Loading…</div></div>
+      </div>
+      <div class="admin-card" style="margin-bottom:0;">
+        <div class="admin-card-title" style="margin-bottom:14px;">💀 0-5 Weeks</div>
+        <div id="streak05Content"><div class="rules-loading">Loading…</div></div>
+      </div>
     </div>
   </div>
 </div>
