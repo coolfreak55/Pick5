@@ -156,9 +156,9 @@
   [data-theme="light"] .admin-corner-btn { color: var(--muted); border-color: var(--border); }
 
   /* ── FONT SCALE ── */
-  body[data-fontsize="small"]  { zoom: 0.88; }
-  body[data-fontsize="normal"] { zoom: 1; }
-  body[data-fontsize="large"]  { zoom: 1.14; }
+  html[data-fontsize="small"]  { zoom: 0.88; }
+  html[data-fontsize="normal"] { zoom: 1; }
+  html[data-fontsize="large"]  { zoom: 1.14; }
 
   /* ── SETTINGS PANEL ── */
   #settingsBtn {
@@ -4079,10 +4079,11 @@ function setTheme(theme) {
 }
 
 function setFontSize(size) {
-  document.body.setAttribute('data-fontsize', size);
+  document.documentElement.setAttribute('data-fontsize', size);
   localStorage.setItem('pick5-fontsize', size);
   ['Small','Normal','Large'].forEach(function(s) {
-    document.getElementById('font' + s).classList.toggle('active', s.toLowerCase() === size);
+    const btn = document.getElementById('font' + s);
+    if (btn) btn.classList.toggle('active', s.toLowerCase() === size);
   });
 }
 
@@ -4090,12 +4091,7 @@ function initSettings() {
   const theme = localStorage.getItem('pick5-theme') || 'dark';
   const size  = localStorage.getItem('pick5-fontsize') || 'normal';
   setTheme(theme);
-  // Wait for body to exist
-  if (document.body) {
-    setFontSize(size);
-  } else {
-    document.addEventListener('DOMContentLoaded', function() { setFontSize(size); });
-  }
+  setFontSize(size);
 }
 
 // Init on load
