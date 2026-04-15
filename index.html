@@ -4445,8 +4445,10 @@ document.addEventListener('click', function(e) {
 function setTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem('pick5-theme', theme);
-  document.getElementById('themeDark').classList.toggle('active',  theme === 'dark');
-  document.getElementById('themeLight').classList.toggle('active', theme === 'light');
+  const darkBtn  = document.getElementById('themeDark');
+  const lightBtn = document.getElementById('themeLight');
+  if (darkBtn)  darkBtn.classList.toggle('active',  theme === 'dark');
+  if (lightBtn) lightBtn.classList.toggle('active', theme === 'light');
 }
 
 function setFontSize(size) {
