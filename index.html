@@ -2435,9 +2435,6 @@ let scoresYear = null;
 let scoresSeasonType = 2; // 1=pre, 2=regular, 3=post
 let scoresRefreshTimer = null;
 
-// ── Week polling ──
-let weekPollTimer = null;
-let pollingEnabled = localStorage.getItem('pick5-polling') !== 'off';
 let currentActiveWeek = null;
 
 // ── Picks state ──
@@ -2610,7 +2607,6 @@ function afterLogin(email, teamName) {
       await new Promise(r => setTimeout(r, 100));
       tries++;
     }
-    // Set currentActiveWeek before polling starts so first poll doesn't false-trigger
     try {
       const w = window.fbGetSpreadsWeek ? await window.fbGetSpreadsWeek() : null;
       currentActiveWeek = w ? String(w) : null;
@@ -2625,7 +2621,6 @@ function afterLogin(email, teamName) {
     } catch(e) {}
     await updateWeekBadge();
     await showPage('selector');
-    if (pollingEnabled) startWeekPolling();
   })();
 }
 
@@ -2704,7 +2699,6 @@ async function showPage(page) {
   } else if (page === 'admin') {
     loadPendingRequests();
     loadMissingPicks();
-    initPollingToggle();
     loadAdminNbaStatus();
     const p = document.getElementById('adminPage');
     p.style.display = 'flex';
@@ -2764,7 +2758,6 @@ function logout() {
   document.getElementById('recordsPage').style.display        = 'none';
   document.getElementById('weeklyRecapPage').style.display    = 'none';
   document.getElementById('navNbaScores').style.display  = 'none';
-  stopWeekPolling();
   clearInterval(nbaScoresRefreshTimer);
   currentActiveWeek = null;
   document.getElementById('emailInput').value = '';
@@ -3854,77 +3847,6 @@ function setAdminStatus(msg, type) {
 }
 
 // ── Weekly Picks ──
-// ── Week Polling ──
-// ── Polling toggle ──
-function handlePollingToggle(enabled) {
-  pollingEnabled = enabled;
-  localStorage.setItem('pick5-polling', enabled ? 'on' : 'off');
-  const label  = document.getElementById('pollingToggleLabel');
-  const status = document.getElementById('pollingStatus');
-  if (enabled) {
-    label.textContent  = 'Polling enabled';
-    status.textContent = 'Checking Firebase every 30s';
-    startWeekPolling();
-  } else {
-    label.textContent  = 'Polling disabled';
-    status.textContent = 'No automatic week detection';
-    stopWeekPolling();
-  }
-}
-
-function initPollingToggle() {
-  const checkbox = document.getElementById('pollingToggle');
-  if (!checkbox) return;
-  checkbox.checked = pollingEnabled;
-  const label  = document.getElementById('pollingToggleLabel');
-  const status = document.getElementById('pollingStatus');
-  label.textContent  = pollingEnabled ? 'Polling enabled'  : 'Polling disabled';
-  status.textContent = pollingEnabled ? 'Checking Firebase every 30s' : 'No automatic week detection';
-}
-
-function startWeekPolling() {
-  stopWeekPolling();
-  if (!pollingEnabled) return;
-  weekPollTimer = setInterval(async function() {
-    try {
-      const week = window.fbGetSpreadsWeek ? await window.fbGetSpreadsWeek() : null;
-      const newWeek = week ? String(week) : null;
-      const oldWeek = currentActiveWeek ? String(currentActiveWeek) : null;
-
-      if (newWeek !== oldWeek) {
-        currentActiveWeek = newWeek;
-        // Update badge regardless of which page user is on
-        await updateWeekBadge();
-        // If user is on selector page, reload spreads
-        const selectorVisible = document.getElementById('selectorPage').style.display !== 'none';
-        if (selectorVisible) {
-          if (newWeek) {
-            await fetchAndRenderSpreads(newWeek);
-          } else {
-            document.getElementById('spreadsSection').style.display = 'none';
-            document.getElementById('spreadsGrid').innerHTML = '';
-            selectedPicks = [];
-            updatePicksCounter();
-          }
-        }
-        // If user is on weekly picks page, reload that too
-        const weeklyVisible = document.getElementById('weeklyPicksPage').style.display !== 'none';
-        if (weeklyVisible) {
-          loadWeeklyPicks();
-        }
-      }
-    } catch(e) {
-      console.error('Week poll error:', e);
-    }
-  }, 30000); // poll every 30 seconds
-}
-
-function stopWeekPolling() {
-  if (weekPollTimer) {
-    clearInterval(weekPollTimer);
-    weekPollTimer = null;
-  }
-}
 
 // ── Request Access ──
 function formatPhoneInput(input) {
@@ -5775,20 +5697,6 @@ async function renderRecapWeek() {
       <p class="admin-card-desc">Users who have not submitted picks for the current active week.</p>
       <div id="missingPicksLoading" style="color:var(--muted);font-size:14px;margin-bottom:8px;">Loading…</div>
       <div id="missingPicksList"></div>
-    </div>
-
-    <!-- Week Polling Toggle -->
-    <div class="admin-card">
-      <div class="admin-card-title">🔄 Week Polling</div>
-      <p class="admin-card-desc">When enabled, the app checks Firebase every 30 seconds to detect week changes and auto-updates all users' pages. Disable to reduce Firestore reads.</p>
-      <div style="display:flex;align-items:center;gap:14px;margin-top:12px;">
-        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;">
-          <input type="checkbox" id="pollingToggle" onchange="handlePollingToggle(this.checked)"
-            style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer;" />
-          <span style="font-size:14px;color:var(--text);font-weight:600;" id="pollingToggleLabel">Polling disabled</span>
-        </label>
-        <span style="font-size:12px;color:var(--muted);" id="pollingStatus"></span>
-      </div>
     </div>
 
     <!-- Spreads Week Picker -->
