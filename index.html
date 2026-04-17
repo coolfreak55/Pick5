@@ -3947,7 +3947,6 @@ async function fetchScores() {
       const homeRecord = home && home.records && home.records[0] ? home.records[0].summary : '';
       const awayLogoUrl = (away && away.team && away.team.logo) || ('https://a.espncdn.com/i/teamlogos/nfl/500/' + (away && away.team ? away.team.abbreviation.toLowerCase() : 'nfl') + '.png');
       const homeLogoUrl = (home && home.team && home.team.logo) || ('https://a.espncdn.com/i/teamlogos/nfl/500/' + (home && home.team ? home.team.abbreviation.toLowerCase() : 'nfl') + '.png');
-
       const cardHeader = document.createElement('div');
       cardHeader.className = 'score-card-header';
       const statusEl = document.createElement('span');
@@ -3968,6 +3967,7 @@ async function fetchScores() {
       awayRow.className = 'score-team';
       const awayLogoEl = document.createElement('img');
       awayLogoEl.className = 'score-team-logo'; awayLogoEl.src = awayLogoUrl; awayLogoEl.alt = awayName;
+      awayLogoEl.onerror = function() { this.src = 'https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png'; this.onerror = null; };
       const awayInfo = document.createElement('div');
       const awayNameEl = document.createElement('div');
       awayNameEl.className = 'score-team-name' + (awayWins ? ' winner' : '');
@@ -3988,6 +3988,7 @@ async function fetchScores() {
       homeRow.className = 'score-team';
       const homeLogoEl = document.createElement('img');
       homeLogoEl.className = 'score-team-logo'; homeLogoEl.src = homeLogoUrl; homeLogoEl.alt = homeName;
+      homeLogoEl.onerror = function() { this.src = 'https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png'; this.onerror = null; };
       const homeInfo = document.createElement('div');
       const homeNameEl = document.createElement('div');
       homeNameEl.className = 'score-team-name' + (homeWins ? ' winner' : '');
@@ -4162,8 +4163,8 @@ async function fetchNbaScores() {
       const homeName   = home && home.team ? home.team.shortDisplayName : 'Home';
       const awayRecord = away && away.records && away.records[0] ? away.records[0].summary : '';
       const homeRecord = home && home.records && home.records[0] ? home.records[0].summary : '';
-      const awayLogoUrl = (away && away.team && away.team.logo) || ('https://a.espncdn.com/i/teamlogos/nfl/500/' + (away && away.team ? away.team.abbreviation.toLowerCase() : 'nfl') + '.png');
-      const homeLogoUrl = (home && home.team && home.team.logo) || ('https://a.espncdn.com/i/teamlogos/nfl/500/' + (home && home.team ? home.team.abbreviation.toLowerCase() : 'nfl') + '.png');
+      const awayLogoUrl = (away && away.team && away.team.logo) || ('https://a.espncdn.com/i/teamlogos/nba/500/' + (away && away.team ? away.team.abbreviation.toLowerCase() : 'nba') + '.png');
+      const homeLogoUrl = (home && home.team && home.team.logo) || ('https://a.espncdn.com/i/teamlogos/nba/500/' + (home && home.team ? home.team.abbreviation.toLowerCase() : 'nba') + '.png');
 
       const cardHeader = document.createElement('div');
       cardHeader.className = 'score-card-header';
@@ -4185,6 +4186,7 @@ async function fetchNbaScores() {
       awayRow.className = 'score-team';
       const awayLogoEl = document.createElement('img');
       awayLogoEl.className = 'score-team-logo'; awayLogoEl.src = awayLogoUrl; awayLogoEl.alt = awayName;
+      awayLogoEl.onerror = function() { this.src = 'https://a.espncdn.com/i/teamlogos/leagues/500/nba.png'; this.onerror = null; };
       const awayInfo = document.createElement('div');
       const awayNameEl = document.createElement('div');
       awayNameEl.className = 'score-team-name' + (awayWins ? ' winner' : '');
@@ -4205,6 +4207,7 @@ async function fetchNbaScores() {
       homeRow.className = 'score-team';
       const homeLogoEl = document.createElement('img');
       homeLogoEl.className = 'score-team-logo'; homeLogoEl.src = homeLogoUrl; homeLogoEl.alt = homeName;
+      homeLogoEl.onerror = function() { this.src = 'https://a.espncdn.com/i/teamlogos/leagues/500/nba.png'; this.onerror = null; };
       const homeInfo = document.createElement('div');
       const homeNameEl = document.createElement('div');
       homeNameEl.className = 'score-team-name' + (homeWins ? ' winner' : '');
@@ -4340,7 +4343,6 @@ async function fetchMlbScores() {
       const homeRecord = home && home.records && home.records[0] ? home.records[0].summary : '';
       const awayLogoUrl = (away && away.team && away.team.logo) || ('https://a.espncdn.com/i/teamlogos/mlb/500/' + (away && away.team ? away.team.abbreviation.toLowerCase() : 'mlb') + '.png');
       const homeLogoUrl = (home && home.team && home.team.logo) || ('https://a.espncdn.com/i/teamlogos/mlb/500/' + (home && home.team ? home.team.abbreviation.toLowerCase() : 'mlb') + '.png');
-
       const cardHeader = document.createElement('div');
       cardHeader.className = 'score-card-header';
       const statusEl = document.createElement('span');
@@ -4361,6 +4363,7 @@ async function fetchMlbScores() {
       awayRow.className = 'score-team';
       const awayLogoEl = document.createElement('img');
       awayLogoEl.className = 'score-team-logo'; awayLogoEl.src = awayLogoUrl; awayLogoEl.alt = awayName;
+      awayLogoEl.onerror = function() { this.src = 'https://a.espncdn.com/i/teamlogos/leagues/500/mlb.png'; this.onerror = null; };
       const awayInfo = document.createElement('div');
       const awayNameEl = document.createElement('div');
       awayNameEl.className = 'score-team-name' + (awayWins ? ' winner' : '');
@@ -4381,6 +4384,7 @@ async function fetchMlbScores() {
       homeRow.className = 'score-team';
       const homeLogoEl = document.createElement('img');
       homeLogoEl.className = 'score-team-logo'; homeLogoEl.src = homeLogoUrl; homeLogoEl.alt = homeName;
+      homeLogoEl.onerror = function() { this.src = 'https://a.espncdn.com/i/teamlogos/leagues/500/mlb.png'; this.onerror = null; };
       const homeInfo = document.createElement('div');
       const homeNameEl = document.createElement('div');
       homeNameEl.className = 'score-team-name' + (homeWins ? ' winner' : '');
