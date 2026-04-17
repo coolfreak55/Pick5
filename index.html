@@ -783,6 +783,176 @@
   }
   .scores-empty .icon { font-size: 40px; margin-bottom: 16px; }
 
+  .score-card { cursor: pointer; }
+
+  /* ── GAME DETAIL MODAL ── */
+  #gameDetailOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    backdrop-filter: blur(4px);
+  }
+  .game-detail-modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    width: 100%;
+    max-width: 580px;
+    max-height: 88vh;
+    overflow-y: auto;
+    position: relative;
+    animation: pageFade 0.2s ease forwards;
+  }
+  .gd-close {
+    position: absolute;
+    top: 12px; right: 14px;
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 20px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: color 0.15s;
+  }
+  .gd-close:hover { color: var(--text); }
+  .gd-header {
+    padding: 24px 24px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .gd-title {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .gd-matchup {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .gd-team {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+  }
+  .gd-team-logo {
+    width: 52px; height: 52px;
+    object-fit: contain;
+  }
+  .gd-team-name {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--text);
+  }
+  .gd-team-record {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+  .gd-score-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-width: 90px;
+  }
+  .gd-scores {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 42px;
+    letter-spacing: 0.04em;
+    color: var(--text);
+  }
+  .gd-scores .gd-dash { font-size: 28px; color: var(--muted); }
+  .gd-scores .winner { color: var(--accent); }
+  .gd-game-status {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .gd-game-status.live { color: #e74c3c; }
+  .gd-body { padding: 20px 24px; }
+  .gd-section { margin-bottom: 20px; }
+  .gd-section-title {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 6px;
+  }
+  .gd-linescore {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .gd-linescore th, .gd-linescore td {
+    text-align: center;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .gd-linescore th {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .gd-linescore td:first-child { text-align: left; font-weight: 600; }
+  .gd-linescore .total-col { font-weight: 700; color: var(--accent); }
+  .gd-stats-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .gd-stats-table th {
+    text-align: right;
+    padding: 5px 8px;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .gd-stats-table th:first-child { text-align: left; }
+  .gd-stats-table td {
+    text-align: right;
+    padding: 5px 8px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  .gd-stats-table td:first-child { text-align: left; color: var(--muted); }
+  .gd-loading {
+    padding: 48px 24px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+    letter-spacing: 0.08em;
+  }
+  .gd-loading .loading-spinner { margin: 0 auto 12px; }
+  .gd-error {
+    padding: 32px 24px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  [data-theme="light"] .game-detail-modal { background: #fff; }
+  [data-theme="light"] .gd-close { color: #666; }
+  [data-theme="light"] .gd-close:hover { color: #111; }
 
   /* ── MY PICKS PAGE ── */
   .picks-loading {
@@ -4011,6 +4181,7 @@ async function fetchScores() {
       const card = document.createElement('div');
       card.className = 'score-card' + (isLive ? ' live' : '');
       card.style.animationDelay = (ei * 0.04) + 's';
+      card.onclick = (function(eid) { return function() { openGameModal(eid, 'football', 'nfl'); }; })(event.id);
 
       const gameDate    = new Date(event.date);
       const gameDateStr = gameDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
@@ -4240,6 +4411,7 @@ async function fetchNbaScores() {
       const homeRecord = home && home.records && home.records[0] ? home.records[0].summary : '';
       const awayLogoUrl = (away && away.team && away.team.logo) || ('https://a.espncdn.com/i/teamlogos/nba/500/' + (away && away.team ? away.team.abbreviation.toLowerCase() : 'nba') + '.png');
       const homeLogoUrl = (home && home.team && home.team.logo) || ('https://a.espncdn.com/i/teamlogos/nba/500/' + (home && home.team ? home.team.abbreviation.toLowerCase() : 'nba') + '.png');
+      card.onclick = (function(eid) { return function() { openGameModal(eid, 'basketball', 'nba'); }; })(event.id);
 
       const cardHeader = document.createElement('div');
       cardHeader.className = 'score-card-header';
@@ -4418,6 +4590,7 @@ async function fetchMlbScores() {
       const homeRecord = home && home.records && home.records[0] ? home.records[0].summary : '';
       const awayLogoUrl = (away && away.team && away.team.logo) || ('https://a.espncdn.com/i/teamlogos/mlb/500/' + (away && away.team ? away.team.abbreviation.toLowerCase() : 'mlb') + '.png');
       const homeLogoUrl = (home && home.team && home.team.logo) || ('https://a.espncdn.com/i/teamlogos/mlb/500/' + (home && home.team ? home.team.abbreviation.toLowerCase() : 'mlb') + '.png');
+      card.onclick = (function(eid) { return function() { openGameModal(eid, 'baseball', 'mlb'); }; })(event.id);
       const cardHeader = document.createElement('div');
       cardHeader.className = 'score-card-header';
       const statusEl = document.createElement('span');
@@ -4494,6 +4667,248 @@ async function fetchMlbScores() {
     errorEl.textContent     = 'Unable to load scores. Please try again later.';
     console.error(err);
   }
+}
+
+// ── Game Detail Modal ──
+function openGameModal(eventId, sport, league) {
+  const overlay = document.getElementById('gameDetailOverlay');
+  const content = document.getElementById('gameDetailContent');
+  content.innerHTML = '<div class="gd-loading"><div class="loading-spinner"></div>Loading game details…</div>';
+  overlay.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+
+  const url = 'https://site.api.espn.com/apis/site/v2/sports/' + sport + '/' + league + '/summary?event=' + eventId;
+  fetch(url)
+    .then(function(r) { if (!r.ok) throw new Error('API error'); return r.json(); })
+    .then(function(data) { content.innerHTML = renderGameDetail(data, sport); })
+    .catch(function() {
+      content.innerHTML = '<div class="gd-error">Could not load game details. Try again later.</div>';
+    });
+}
+
+function closeGameModal() {
+  document.getElementById('gameDetailOverlay').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function renderGameDetail(data, sport) {
+  const comp = (data.header && data.header.competitions && data.header.competitions[0]) || {};
+  const competitors = comp.competitors || [];
+  const status = comp.status || {};
+  const stateType = (status.type && status.type.state) || 'pre';
+  const statusStr = (status.type && status.type.shortDetail) || '';
+  const isFinal = stateType === 'post';
+  const isLive  = stateType === 'in';
+  const isPre   = stateType === 'pre';
+
+  const home = competitors.find(function(c) { return c.homeAway === 'home'; }) || {};
+  const away = competitors.find(function(c) { return c.homeAway === 'away'; }) || {};
+  const homeScore = parseInt(home.score) || 0;
+  const awayScore = parseInt(away.score) || 0;
+  const homeWins = isFinal && homeScore > awayScore;
+  const awayWins = isFinal && awayScore > homeScore;
+
+  const awayTeam = away.team || {};
+  const homeTeam = home.team || {};
+  const awayRecord = (away.records && away.records[0] && away.records[0].summary) || '';
+  const homeRecord = (home.records && home.records[0] && home.records[0].summary) || '';
+
+  const leagueKey = sport === 'football' ? 'nfl' : sport === 'basketball' ? 'nba' : 'mlb';
+  const awayLogo = awayTeam.logo || ('https://a.espncdn.com/i/teamlogos/' + leagueKey + '/500/' + (awayTeam.abbreviation || '').toLowerCase() + '.png');
+  const homeLogo = homeTeam.logo || ('https://a.espncdn.com/i/teamlogos/' + leagueKey + '/500/' + (homeTeam.abbreviation || '').toLowerCase() + '.png');
+
+  const gameInfo = comp.venue ? (comp.venue.fullName || '') : '';
+  const gameInfoCity = comp.venue && comp.venue.address ? (comp.venue.address.city || '') : '';
+  const venueStr = gameInfo ? (gameInfo + (gameInfoCity ? ', ' + gameInfoCity : '')) : '';
+
+  let html = '<div class="gd-header">';
+  if (venueStr) html += '<div class="gd-title">' + escHtml(venueStr) + '</div>';
+  html += '<div class="gd-matchup">';
+
+  // Away team
+  html += '<div class="gd-team">';
+  html += '<img class="gd-team-logo" src="' + escHtml(awayLogo) + '" alt="' + escHtml(awayTeam.shortDisplayName || 'Away') + '" onerror="this.style.display=\'none\'">';
+  html += '<div class="gd-team-name">' + escHtml(awayTeam.shortDisplayName || 'Away') + '</div>';
+  if (awayRecord) html += '<div class="gd-team-record">' + escHtml(awayRecord) + '</div>';
+  html += '</div>';
+
+  // Score
+  html += '<div class="gd-score-area">';
+  html += '<div class="gd-scores">';
+  html += '<span class="' + (awayWins ? 'winner' : '') + '">' + (isPre ? '—' : awayScore) + '</span>';
+  html += '<span class="gd-dash">-</span>';
+  html += '<span class="' + (homeWins ? 'winner' : '') + '">' + (isPre ? '—' : homeScore) + '</span>';
+  html += '</div>';
+  const statusClass = isLive ? 'live' : '';
+  const statusLabel = isLive ? statusStr : isFinal ? 'Final' : 'Scheduled';
+  html += '<div class="gd-game-status ' + statusClass + '">' + escHtml(statusLabel) + '</div>';
+  html += '</div>';
+
+  // Home team
+  html += '<div class="gd-team">';
+  html += '<img class="gd-team-logo" src="' + escHtml(homeLogo) + '" alt="' + escHtml(homeTeam.shortDisplayName || 'Home') + '" onerror="this.style.display=\'none\'">';
+  html += '<div class="gd-team-name">' + escHtml(homeTeam.shortDisplayName || 'Home') + '</div>';
+  if (homeRecord) html += '<div class="gd-team-record">' + escHtml(homeRecord) + '</div>';
+  html += '</div>';
+
+  html += '</div></div>'; // end matchup + header
+
+  html += '<div class="gd-body">';
+
+  // Line score
+  const awayLinescores = away.linescores || [];
+  const homeLinescores = home.linescores || [];
+  if (!isPre && (awayLinescores.length > 0 || homeLinescores.length > 0)) {
+    const periods = Math.max(awayLinescores.length, homeLinescores.length);
+    html += '<div class="gd-section"><div class="gd-section-title">';
+    if (sport === 'football') html += 'Quarter Scores';
+    else if (sport === 'basketball') html += 'Quarter Scores';
+    else html += 'Inning Scores';
+    html += '</div>';
+    html += '<table class="gd-linescore"><thead><tr><th></th>';
+
+    if (sport === 'baseball') {
+      for (let i = 0; i < periods; i++) html += '<th>' + (i + 1) + '</th>';
+      html += '<th class="total-col">R</th><th>H</th><th>E</th>';
+    } else {
+      const labels = ['Q1','Q2','Q3','Q4','OT','OT2','OT3'];
+      for (let i = 0; i < periods; i++) html += '<th>' + (labels[i] || ('OT'+(i-3))) + '</th>';
+      html += '<th class="total-col">T</th>';
+    }
+    html += '</tr></thead><tbody>';
+
+    function scoreRow(teamName, linescores, total, extras) {
+      let row = '<tr><td>' + escHtml(teamName) + '</td>';
+      for (let i = 0; i < periods; i++) {
+        const v = linescores[i] !== undefined ? linescores[i].value : '—';
+        row += '<td>' + (v !== undefined && v !== null ? v : '—') + '</td>';
+      }
+      row += '<td class="total-col">' + total + '</td>';
+      if (extras) row += extras;
+      row += '</tr>';
+      return row;
+    }
+
+    if (sport === 'baseball') {
+      const bsTeams = (data.boxscore && data.boxscore.teams) || [];
+      const awayBs = bsTeams.find(function(t) { return t.homeAway === 'away'; }) || {};
+      const homeBs = bsTeams.find(function(t) { return t.homeAway === 'home'; }) || {};
+      function bsStat(bs, name) {
+        const stats = bs.statistics || [];
+        const s = stats.find(function(x) { return x.name === name || x.abbreviation === name; });
+        return s ? s.displayValue : '—';
+      }
+      html += '<tr><td></td>';
+      for (let i = 0; i < periods; i++) html += '<th>' + (i + 1) + '</th>';
+      html += '<th class="total-col">R</th><th>H</th><th>E</th></tr>';
+      html += '<tr><td>' + escHtml(awayTeam.abbreviation || 'Away') + '</td>';
+      for (let i = 0; i < periods; i++) {
+        const v = awayLinescores[i] !== undefined ? awayLinescores[i].value : '—';
+        html += '<td>' + v + '</td>';
+      }
+      html += '<td class="total-col">' + awayScore + '</td>';
+      html += '<td>' + bsStat(awayBs, 'hits') + '</td>';
+      html += '<td>' + bsStat(awayBs, 'errors') + '</td></tr>';
+      html += '<tr><td>' + escHtml(homeTeam.abbreviation || 'Home') + '</td>';
+      for (let i = 0; i < periods; i++) {
+        const v = homeLinescores[i] !== undefined ? homeLinescores[i].value : '—';
+        html += '<td>' + v + '</td>';
+      }
+      html += '<td class="total-col">' + homeScore + '</td>';
+      html += '<td>' + bsStat(homeBs, 'hits') + '</td>';
+      html += '<td>' + bsStat(homeBs, 'errors') + '</td></tr>';
+    } else {
+      html += scoreRow(awayTeam.abbreviation || 'Away', awayLinescores, awayScore);
+      html += scoreRow(homeTeam.abbreviation || 'Home', homeLinescores, homeScore);
+    }
+    html += '</tbody></table></div>';
+  }
+
+  // Team stats
+  const bsTeams = (data.boxscore && data.boxscore.teams) || [];
+  if (bsTeams.length === 2) {
+    const awayBs = bsTeams.find(function(t) { return t.homeAway === 'away'; }) || bsTeams[0];
+    const homeBs = bsTeams.find(function(t) { return t.homeAway === 'home'; }) || bsTeams[1];
+    const awayStats = awayBs.statistics || [];
+    const homeStats = homeBs.statistics || [];
+
+    function getStat(stats, name) {
+      const s = stats.find(function(x) { return x.name === name || x.label === name; });
+      return s ? s.displayValue : null;
+    }
+
+    let statRows = [];
+    if (sport === 'football') {
+      const keys = [
+        ['passingYards', 'Pass Yds'],
+        ['rushingYards', 'Rush Yds'],
+        ['totalYards', 'Total Yds'],
+        ['turnovers', 'Turnovers'],
+        ['firstDowns', 'First Downs'],
+        ['possessionTime', 'Time of Poss'],
+        ['thirdDownEff', '3rd Down'],
+      ];
+      keys.forEach(function(k) {
+        const av = getStat(awayStats, k[0]);
+        const hv = getStat(homeStats, k[0]);
+        if (av !== null || hv !== null) statRows.push([k[1], av || '—', hv || '—']);
+      });
+    } else if (sport === 'basketball') {
+      const keys = [
+        ['fieldGoalsMade-fieldGoalsAttempted', 'FG'],
+        ['threePointFieldGoalsMade-threePointFieldGoalsAttempted', '3PT'],
+        ['freeThrowsMade-freeThrowsAttempted', 'FT'],
+        ['rebounds', 'Rebounds'],
+        ['assists', 'Assists'],
+        ['turnovers', 'Turnovers'],
+        ['steals', 'Steals'],
+        ['blocks', 'Blocks'],
+        ['pointsInPaint', 'Pts in Paint'],
+        ['fastBreakPoints', 'Fast Break Pts'],
+      ];
+      keys.forEach(function(k) {
+        const av = getStat(awayStats, k[0]);
+        const hv = getStat(homeStats, k[0]);
+        if (av !== null || hv !== null) statRows.push([k[1], av || '—', hv || '—']);
+      });
+    } else if (sport === 'baseball') {
+      const keys = [
+        ['hits', 'Hits'],
+        ['runs', 'Runs'],
+        ['homeRuns', 'Home Runs'],
+        ['rbi', 'RBI'],
+        ['strikeOuts', 'Strikeouts'],
+        ['walks', 'Walks'],
+        ['leftOnBase', 'Left on Base'],
+        ['errors', 'Errors'],
+      ];
+      keys.forEach(function(k) {
+        const av = getStat(awayStats, k[0]);
+        const hv = getStat(homeStats, k[0]);
+        if (av !== null || hv !== null) statRows.push([k[1], av || '—', hv || '—']);
+      });
+    }
+
+    if (statRows.length > 0) {
+      html += '<div class="gd-section"><div class="gd-section-title">Team Stats</div>';
+      html += '<table class="gd-stats-table"><thead><tr>';
+      html += '<th></th>';
+      html += '<th>' + escHtml(awayTeam.abbreviation || 'Away') + '</th>';
+      html += '<th>' + escHtml(homeTeam.abbreviation || 'Home') + '</th>';
+      html += '</tr></thead><tbody>';
+      statRows.forEach(function(row) {
+        html += '<tr><td>' + escHtml(row[0]) + '</td><td>' + escHtml(String(row[1])) + '</td><td>' + escHtml(String(row[2])) + '</td></tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+  }
+
+  html += '</div>'; // end gd-body
+  return html;
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // ── Admin ──
@@ -6012,6 +6427,12 @@ async function loadWeeklyPicks() {
   }
 }
 
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    const overlay = document.getElementById('gameDetailOverlay');
+    if (overlay && overlay.style.display !== 'none') closeGameModal();
+  }
+});
 
 </script>
 
@@ -6367,5 +6788,14 @@ async function loadWeeklyPicks() {
 </div>
 
 <div class="version-badge">v1.0.4</div>
+
+<!-- ═══ GAME DETAIL MODAL ═══ -->
+<div id="gameDetailOverlay" style="display:none;" onclick="if(event.target===this)closeGameModal()">
+  <div class="game-detail-modal">
+    <button class="gd-close" onclick="closeGameModal()">✕</button>
+    <div id="gameDetailContent"></div>
+  </div>
+</div>
+
 </body>
 </html>
