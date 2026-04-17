@@ -2234,6 +2234,80 @@
   [data-theme="light"] .tt-card { background: var(--surface); border-color: var(--border); }
   [data-theme="light"] .tt-message { color: var(--text); }
 
+  .tt-quote {
+    background: rgba(255,255,255,0.04);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 6px 6px 0;
+    padding: 7px 12px;
+    margin-bottom: 10px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .tt-quote-author { font-weight: 700; color: var(--accent); font-size: 11px; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .tt-quote-text { white-space: pre-wrap; word-break: break-word; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  [data-theme="light"] .tt-quote { background: rgba(0,0,0,0.04); }
+
+  .tt-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 10px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .tt-reactions { display: flex; gap: 4px; flex-wrap: wrap; }
+  .tt-reaction-btn {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 3px 9px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    line-height: 1.4;
+  }
+  .tt-reaction-btn:hover { border-color: var(--accent); background: rgba(200,169,74,0.1); }
+  .tt-reaction-btn.reacted { border-color: var(--accent); background: rgba(200,169,74,0.18); }
+  .tt-reaction-count { font-size: 11px; color: var(--muted); }
+  .tt-reaction-btn.reacted .tt-reaction-count { color: var(--accent); font-weight: 700; }
+  [data-theme="light"] .tt-reaction-btn { background: #f0f2f8; }
+  [data-theme="light"] .tt-reaction-btn.reacted { background: rgba(200,169,74,0.15); }
+
+  .tt-reply-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 12px;
+    padding: 3px 8px;
+    transition: all 0.15s;
+    font-family: inherit;
+    white-space: nowrap;
+  }
+  .tt-reply-btn:hover { color: var(--accent); border-color: rgba(200,169,74,0.4); }
+
+  .tt-reply-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(200,169,74,0.08);
+    border: 1px solid rgba(200,169,74,0.25);
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: var(--text);
+  }
+  .tt-reply-banner-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+  .tt-reply-banner-author { font-weight: 700; color: var(--accent); }
+  .tt-reply-banner-cancel { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; padding: 0; line-height: 1; flex-shrink: 0; }
+  .tt-reply-banner-cancel:hover { color: var(--text); }
+
 </style>
 </head>
 <body>
@@ -2396,7 +2470,7 @@
 </div>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, collection, addDoc, query, where, getDocs, doc, setDoc, getDoc, deleteDoc, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getFirestore, collection, addDoc, query, where, getDocs, doc, setDoc, getDoc, updateDoc, deleteDoc, orderBy, limit, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyC6wED6bBvMNGiQFFEGHdQGSP7iKGSIdvk",
@@ -2571,13 +2645,34 @@
     } catch(e) { console.error('fbCheckTeamNameTaken:', e); return false; }
   };
 
+  window.fbToggleReaction = async function(postId, emoji, userEmail) {
+    const postRef = doc(db, "trashTalk", postId);
+    const snap = await getDoc(postRef);
+    if (!snap.exists()) return;
+    const reactions = snap.data().reactions || {};
+    const current = reactions[emoji] || [];
+    const field = 'reactions.' + emoji;
+    if (current.includes(userEmail)) {
+      await updateDoc(postRef, { [field]: arrayRemove(userEmail) });
+      return { reacted: false, count: current.length - 1 };
+    } else {
+      await updateDoc(postRef, { [field]: arrayUnion(userEmail) });
+      return { reacted: true, count: current.length + 1 };
+    }
+  };
+
   window.fbSaveTrashTalk = async function(payload) {
-    await addDoc(collection(db, "trashTalk"), {
+    const data = {
       fromEmail:    payload.fromEmail.toLowerCase(),
       fromTeamName: payload.fromTeamName,
       message:      payload.message,
-      timestamp:    Date.now()
-    });
+      timestamp:    Date.now(),
+      reactions:    {}
+    };
+    if (payload.replyToId)      data.replyToId      = payload.replyToId;
+    if (payload.replyToAuthor)  data.replyToAuthor  = payload.replyToAuthor;
+    if (payload.replyToMessage) data.replyToMessage = payload.replyToMessage;
+    await addDoc(collection(db, "trashTalk"), data);
   };
 
   window.fbGetTrashTalk = async function() {
@@ -2955,6 +3050,24 @@ function ttUpdateCharCount() {
   btn.disabled = len === 0 || len > 280;
 }
 
+const TT_EMOJIS = ['🔥','💀','😂','👀','💯','🤡'];
+let ttReplyTo = null;
+
+function setTtReply(postId, author, message) {
+  ttReplyTo = { postId, author, message };
+  const banner = document.getElementById('ttReplyBanner');
+  banner.style.display = 'flex';
+  banner.querySelector('.tt-reply-banner-author').textContent = author;
+  banner.querySelector('.tt-reply-banner-text').textContent = message.length > 80 ? message.slice(0, 80) + '…' : message;
+  document.getElementById('ttTextarea').focus();
+}
+
+function clearTtReply() {
+  ttReplyTo = null;
+  const banner = document.getElementById('ttReplyBanner');
+  banner.style.display = 'none';
+}
+
 async function loadTrashTalk() {
   const container = document.getElementById('ttFeedContainer');
   container.innerHTML = '<div class="tt-loading">Loading messages…</div>';
@@ -2970,22 +3083,130 @@ async function loadTrashTalk() {
   const feed = document.createElement('div');
   feed.className = 'tt-feed';
   posts.forEach(function(post) {
-    const canDelete = isAdmin;
-    const card = document.createElement('div');
-    card.className = 'tt-card';
-    card.innerHTML =
-      '<div class="tt-card-header">' +
-        '<span class="tt-author">' + escHtml(post.fromTeamName || post.fromEmail) + '</span>' +
-        '<div class="tt-meta">' +
-          '<span class="tt-time">' + ttRelativeTime(post.timestamp) + '</span>' +
-          (canDelete ? '<button class="tt-delete-btn" onclick="deleteTrashTalk(\'' + post.id + '\', this)">Delete</button>' : '') +
-        '</div>' +
-      '</div>' +
-      '<div class="tt-message">' + escHtml(post.message) + '</div>';
-    feed.appendChild(card);
+    feed.appendChild(buildTtCard(post, currentEmail, isAdmin));
   });
   container.innerHTML = '';
   container.appendChild(feed);
+}
+
+function buildTtCard(post, currentEmail, isAdmin) {
+  const card = document.createElement('div');
+  card.className = 'tt-card';
+  card.dataset.postId = post.id;
+
+  // Header
+  const header = document.createElement('div');
+  header.className = 'tt-card-header';
+  const author = document.createElement('span');
+  author.className = 'tt-author';
+  author.textContent = post.fromTeamName || post.fromEmail;
+  const meta = document.createElement('div');
+  meta.className = 'tt-meta';
+  const time = document.createElement('span');
+  time.className = 'tt-time';
+  time.textContent = ttRelativeTime(post.timestamp);
+  meta.appendChild(time);
+  if (isAdmin) {
+    const delBtn = document.createElement('button');
+    delBtn.className = 'tt-delete-btn';
+    delBtn.textContent = 'Delete';
+    delBtn.onclick = function() { deleteTrashTalk(post.id, delBtn); };
+    meta.appendChild(delBtn);
+  }
+  header.appendChild(author);
+  header.appendChild(meta);
+  card.appendChild(header);
+
+  // Quote block (if reply)
+  if (post.replyToMessage) {
+    const quote = document.createElement('div');
+    quote.className = 'tt-quote';
+    const quoteAuthor = document.createElement('div');
+    quoteAuthor.className = 'tt-quote-author';
+    quoteAuthor.textContent = '↩ ' + (post.replyToAuthor || '');
+    const quoteText = document.createElement('div');
+    quoteText.className = 'tt-quote-text';
+    quoteText.textContent = post.replyToMessage;
+    quote.appendChild(quoteAuthor);
+    quote.appendChild(quoteText);
+    card.appendChild(quote);
+  }
+
+  // Message
+  const msg = document.createElement('div');
+  msg.className = 'tt-message';
+  msg.textContent = post.message;
+  card.appendChild(msg);
+
+  // Footer: reactions + reply
+  const footer = document.createElement('div');
+  footer.className = 'tt-card-footer';
+
+  const reactionsEl = document.createElement('div');
+  reactionsEl.className = 'tt-reactions';
+  const reactions = post.reactions || {};
+  TT_EMOJIS.forEach(function(emoji) {
+    const users = reactions[emoji] || [];
+    const count = users.length;
+    const reacted = users.includes(currentEmail);
+    const btn = document.createElement('button');
+    btn.className = 'tt-reaction-btn' + (reacted ? ' reacted' : '');
+    btn.title = count > 0 ? count + ' reaction' + (count > 1 ? 's' : '') : '';
+    const emojiSpan = document.createElement('span');
+    emojiSpan.textContent = emoji;
+    btn.appendChild(emojiSpan);
+    if (count > 0) {
+      const countSpan = document.createElement('span');
+      countSpan.className = 'tt-reaction-count';
+      countSpan.textContent = count;
+      btn.appendChild(countSpan);
+    }
+    btn.onclick = function() { handleTtReaction(post.id, emoji, btn, currentEmail); };
+    reactionsEl.appendChild(btn);
+  });
+  footer.appendChild(reactionsEl);
+
+  const replyBtn = document.createElement('button');
+  replyBtn.className = 'tt-reply-btn';
+  replyBtn.textContent = '↩ Reply';
+  replyBtn.onclick = function() {
+    setTtReply(post.id, post.fromTeamName || post.fromEmail, post.message);
+  };
+  footer.appendChild(replyBtn);
+  card.appendChild(footer);
+
+  return card;
+}
+
+async function handleTtReaction(postId, emoji, btnEl, currentEmail) {
+  // Optimistic update
+  const wasReacted = btnEl.classList.contains('reacted');
+  const countSpan = btnEl.querySelector('.tt-reaction-count');
+  const prevCount = countSpan ? parseInt(countSpan.textContent) : 0;
+  const newCount = wasReacted ? prevCount - 1 : prevCount + 1;
+
+  btnEl.classList.toggle('reacted', !wasReacted);
+  if (newCount > 0) {
+    if (countSpan) { countSpan.textContent = newCount; }
+    else {
+      const cs = document.createElement('span');
+      cs.className = 'tt-reaction-count';
+      cs.textContent = newCount;
+      btnEl.appendChild(cs);
+    }
+  } else if (countSpan) {
+    countSpan.remove();
+  }
+  btnEl.title = newCount > 0 ? newCount + ' reaction' + (newCount > 1 ? 's' : '') : '';
+
+  try {
+    await window.fbToggleReaction(postId, emoji, currentEmail);
+  } catch(e) {
+    // Revert on error
+    btnEl.classList.toggle('reacted', wasReacted);
+    if (countSpan) countSpan.textContent = prevCount;
+    console.error('handleTtReaction:', e);
+  }
 }
 
 async function submitTrashTalk() {
@@ -2994,16 +3215,24 @@ async function submitTrashTalk() {
   const msg = ta.value.trim();
   if (!msg || msg.length > 280) return;
 
-  const emailEl   = document.getElementById('navEmail');
-  const email     = (emailEl.dataset.email || '').toLowerCase();
-  const teamName  = emailEl.dataset.teamname || email;
+  const emailEl  = document.getElementById('navEmail');
+  const email    = (emailEl.dataset.email || '').toLowerCase();
+  const teamName = emailEl.dataset.teamname || email;
+
+  const payload = { fromEmail: email, fromTeamName: teamName, message: msg };
+  if (ttReplyTo) {
+    payload.replyToId      = ttReplyTo.postId;
+    payload.replyToAuthor  = ttReplyTo.author;
+    payload.replyToMessage = ttReplyTo.message.length > 200 ? ttReplyTo.message.slice(0, 200) + '…' : ttReplyTo.message;
+  }
 
   btn.disabled    = true;
   btn.textContent = 'Posting…';
   try {
-    await window.fbSaveTrashTalk({ fromEmail: email, fromTeamName: teamName, message: msg });
+    await window.fbSaveTrashTalk(payload);
     ta.value = '';
     ttUpdateCharCount();
+    clearTtReply();
     await loadTrashTalk();
   } catch(e) {
     console.error('submitTrashTalk:', e);
@@ -6017,6 +6246,11 @@ async function loadWeeklyPicks() {
     </div>
 
     <div class="tt-post-form">
+      <div class="tt-reply-banner" id="ttReplyBanner" style="display:none;">
+        <span>↩ Replying to <span class="tt-reply-banner-author"></span>:</span>
+        <span class="tt-reply-banner-text"></span>
+        <button class="tt-reply-banner-cancel" onclick="clearTtReply()" title="Cancel reply">✕</button>
+      </div>
       <textarea id="ttTextarea" maxlength="280" placeholder="Drop your trash talk here…" oninput="ttUpdateCharCount()"></textarea>
       <div class="tt-post-actions">
         <span class="tt-char-count" id="ttCharCount">0 / 280</span>
