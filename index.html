@@ -966,6 +966,36 @@
     opacity: 0.6;
   }
   .admin-corner-btn:hover { color: var(--accent); border-color: var(--accent); opacity: 1; }
+  .admin-pending-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #e05555;
+    color: #fff;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 10px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    margin-left: 6px;
+    vertical-align: middle;
+    line-height: 1;
+  }
+  .tt-new-badge {
+    display: inline-block;
+    background: var(--accent);
+    color: #0a0c10;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    border-radius: 4px;
+    padding: 1px 5px;
+    margin-left: 4px;
+    letter-spacing: 0.06em;
+    vertical-align: middle;
+  }
 
   .admin-card {
     background: var(--surface);
@@ -2324,7 +2354,7 @@
     <button class="nav-link" id="navLeaderboard" onclick="showPage('leaderboard')">Leaderboard</button>
     <button class="nav-link" id="navTeamData" onclick="showPage('teamData')">Team Data</button>
     <button class="nav-link" id="navRulesRecords" onclick="showPage('rulesRecords')">Rules/Records</button>
-    <button class="nav-link" id="navTrashTalk" onclick="showPage('trashTalk')">💬 Trash Talk</button>
+    <button class="nav-link" id="navTrashTalk" onclick="showPage('trashTalk')">💬 Trash Talk <span class="tt-new-badge" id="ttNewBadge" style="display:none;">NEW</span></button>
   </div>
   <div class="nav-right">
     <span class="nav-user">Signed in as <strong id="navEmail" data-email="" data-teamname=""></strong></span>
@@ -2332,7 +2362,7 @@
   </div>
 </nav>
 <div id="adminCorner" style="display:none;position:fixed;bottom:12px;left:16px;z-index:999;">
-  <button class="admin-corner-btn" onclick="showPage('admin')">⚙ Admin</button>
+  <button class="admin-corner-btn" id="adminBtn" onclick="showPage('admin')">⚙ Admin</button>
   <button class="admin-corner-btn" style="margin-top:6px;" onclick="showPage('users')">👥 Users</button>
 </div>
 
@@ -2683,6 +2713,14 @@
     } catch(e) { console.error('fbGetTrashTalk:', e); return []; }
   };
 
+  window.fbGetLatestTrashTalkTimestamp = async function() {
+    try {
+      const q = query(collection(db, "trashTalk"), orderBy("timestamp", "desc"), limit(1));
+      const snap = await getDocs(q);
+      return snap.empty ? null : snap.docs[0].data().timestamp;
+    } catch(e) { return null; }
+  };
+
   window.fbDeleteTrashTalk = async function(docId) {
     await deleteDoc(doc(db, "trashTalk", docId));
   };
@@ -2891,6 +2929,12 @@ function afterLogin(email, teamName) {
       if (mlbVisible || isAdmin) document.getElementById('mlbTab').style.display = '';
     } catch(e) {}
     await updateWeekBadge();
+    // Admin pending badge
+    if (email && ADMIN_EMAILS.includes(email.toLowerCase())) {
+      updateAdminPendingBadge();
+    }
+    // Trash talk new badge
+    checkTtNewBadge();
     await showPage('selector');
   })();
 }
@@ -2991,6 +3035,9 @@ async function showPage(page) {
     p.style.display = 'flex';
     p.classList.remove('fade-in'); void p.offsetWidth; p.classList.add('fade-in');
     document.getElementById('navTrashTalk').classList.add('active');
+    localStorage.setItem('ttLastSeen', Date.now().toString());
+    const ttBadge = document.getElementById('ttNewBadge');
+    if (ttBadge) ttBadge.style.display = 'none';
     loadTrashTalk();
   }
 }
@@ -3048,6 +3095,34 @@ function ttUpdateCharCount() {
   ctr.textContent = len + ' / 280';
   ctr.classList.toggle('over', len > 280);
   btn.disabled = len === 0 || len > 280;
+}
+
+async function updateAdminPendingBadge() {
+  try {
+    const pending = window.fbGetAllPendingUsers ? await window.fbGetAllPendingUsers() : [];
+    const btn = document.getElementById('adminBtn');
+    if (!btn) return;
+    const existing = btn.querySelector('.admin-pending-badge');
+    if (existing) existing.remove();
+    if (pending.length > 0) {
+      const badge = document.createElement('span');
+      badge.className = 'admin-pending-badge';
+      badge.textContent = pending.length;
+      btn.appendChild(badge);
+    }
+  } catch(e) {}
+}
+
+async function checkTtNewBadge() {
+  try {
+    const latest = window.fbGetLatestTrashTalkTimestamp ? await window.fbGetLatestTrashTalkTimestamp() : null;
+    if (!latest) return;
+    const lastSeen = parseInt(localStorage.getItem('ttLastSeen') || '0');
+    if (latest > lastSeen) {
+      const badge = document.getElementById('ttNewBadge');
+      if (badge) badge.style.display = '';
+    }
+  } catch(e) {}
 }
 
 const TT_EMOJIS = ['🔥','💀','😂','👀','💯','🤡'];
@@ -4890,6 +4965,7 @@ async function loadPendingRequests() {
       '</div>';
     listEl.appendChild(row);
   });
+  updateAdminPendingBadge();
 }
 
 async function handleApprove(docId) {
@@ -4902,7 +4978,7 @@ async function handleApprove(docId) {
     const row = document.getElementById('pending-row-' + docId);
     if (row) {
       row.innerHTML = '<div class="pending-req-info"><div class="pending-req-email" style="color:#4caf7d;">✓ Approved</div></div>';
-      setTimeout(() => row.remove(), 1500);
+      setTimeout(() => { row.remove(); updateAdminPendingBadge(); }, 1500);
     }
   } catch(e) {
     alert('Error approving user: ' + e.message);
@@ -4922,7 +4998,7 @@ async function handleDeny(docId) {
     const row = document.getElementById('pending-row-' + docId);
     if (row) {
       row.innerHTML = '<div class="pending-req-info"><div class="pending-req-email" style="color:#ff6b6b;">✗ Denied</div></div>';
-      setTimeout(() => row.remove(), 1500);
+      setTimeout(() => { row.remove(); updateAdminPendingBadge(); }, 1500);
     }
   } catch(e) {
     alert('Error denying user: ' + e.message);
