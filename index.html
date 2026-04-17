@@ -2957,7 +2957,7 @@ async function loadTrashTalk() {
   const feed = document.createElement('div');
   feed.className = 'tt-feed';
   posts.forEach(function(post) {
-    const canDelete = isAdmin || post.fromEmail === currentEmail;
+    const canDelete = isAdmin;
     const card = document.createElement('div');
     card.className = 'tt-card';
     card.innerHTML =
@@ -2995,6 +2995,7 @@ async function submitTrashTalk() {
   } catch(e) {
     console.error('submitTrashTalk:', e);
     alert('Failed to post. Please try again.');
+    btn.disabled = false;
   } finally {
     btn.textContent = 'Post';
   }
