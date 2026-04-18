@@ -7248,5 +7248,34 @@ document.addEventListener('keydown', function(e) {
 </div>
 
 
+
+<script>
+  // Auto-reload when a new deploy is detected (PWA update detection)
+  (function() {
+    var knownETag = null;
+
+    function checkForUpdate() {
+      fetch('/', { method: 'HEAD', cache: 'no-store' })
+        .then(function(res) {
+          var tag = res.headers.get('etag') || res.headers.get('last-modified');
+          if (!tag) return;
+          if (knownETag === null) {
+            knownETag = tag;
+          } else if (tag !== knownETag) {
+            window.location.reload();
+          }
+        })
+        .catch(function() {}); // ignore network errors (offline)
+    }
+
+    // Fingerprint the current version on load
+    checkForUpdate();
+
+    // Re-check whenever the app comes back to the foreground
+    document.addEventListener('visibilitychange', function() {
+      if (document.visibilityState === 'visible') checkForUpdate();
+    });
+  })();
+</script>
 </body>
 </html>
