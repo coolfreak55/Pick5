@@ -1733,6 +1733,52 @@
   .wp-record .pending { color: var(--muted); font-size: 12px; font-family: 'Barlow Condensed', sans-serif; }
 
 
+  /* ── WEEKLY PICKS: mobile card layout ── */
+  @media (max-width: 620px) {
+    .wp-table-wrap { border: none; background: transparent; }
+    .wp-table, .wp-table tbody { display: block; }
+    .wp-table thead { display: none; }
+
+    .wp-table tr {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 5px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 10px;
+      padding: 10px 12px 8px;
+    }
+    .wp-table td {
+      border: none;
+      padding: 0;
+    }
+    /* User name — full width header of the card */
+    .wp-table td:nth-child(1) {
+      width: 100%;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text) !important;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 2px;
+    }
+    /* 5 pick chips — auto-sized, wrap naturally */
+    .wp-table td:nth-child(n+2):nth-child(-n+6) {
+      flex: 0 0 auto;
+    }
+    /* Record + Tiebreaker — full-width footer row */
+    .wp-table td:nth-child(7),
+    .wp-table td:nth-child(8) {
+      flex: 0 0 auto;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+    .wp-table td:nth-child(7) { width: 100%; padding-top: 6px; border-top: 1px solid var(--border); }
+    .wp-table td:nth-child(7)::before { content: 'Record: '; color: var(--muted); font-size: 11px; letter-spacing: 0.08em; }
+    .wp-table td:nth-child(8)::before { content: 'Tiebreaker: '; color: var(--muted); font-size: 11px; letter-spacing: 0.08em; }
+  }
+
   /* ── PICK DISTRIBUTION ── */
   .wp-dist {
     margin-top: 28px;
