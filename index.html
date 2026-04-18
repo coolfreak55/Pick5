@@ -398,7 +398,7 @@
   .container { width: 100%; max-width: 680px; }
 
   #loginPage  { display: flex; }
-  #selectorPage, #myPicksPage, #scoresPage, #standingsPage, #adminPage, #weeklyPicksPage, #resultsPage, #leaderboardPage, #usersPage, #teamDataPage, #rulesRecordsPage, #trashTalkPage { display: none; }
+  #selectorPage, #myPicksPage, #scoresPage, #adminPage, #weeklyPicksPage, #resultsPage, #leaderboardPage, #usersPage, #teamDataPage, #rulesRecordsPage, #trashTalkPage { display: none; }
 
   .pending-req-row {
     display: flex;
@@ -990,6 +990,12 @@
   [data-theme="light"] .game-detail-modal { background: #fff; }
   [data-theme="light"] .gd-close { color: #666; }
   [data-theme="light"] .gd-close:hover { color: #111; }
+
+  .standings-section-divider {
+    font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--accent); font-weight: 600; margin: 36px 0 20px;
+    padding-bottom: 10px; border-bottom: 1px solid var(--border);
+  }
 
   /* ── STANDINGS PAGE ── */
   .standings-tabs { display: flex; gap: 8px; margin-bottom: 24px; }
@@ -2610,7 +2616,6 @@
     <button class="nav-link" id="navRulesRecords" onclick="showPage('rulesRecords')">Rules/Records</button>
     <button class="nav-link" id="navTrashTalk" onclick="showPage('trashTalk')">💬 Trash Talk <span class="tt-new-badge" id="ttNewBadge" style="display:none;">NEW</span></button>
     <button class="nav-link" id="navNbaScores" onclick="showPage('nbaScores')" style="display:none;">NBA Scores</button>
-    <button class="nav-link" id="navStandings" onclick="showPage('standings')">Standings</button>
   </div>
   <div class="nav-right">
     <span class="nav-user">Signed in as <strong id="navEmail" data-email="" data-teamname=""></strong></span>
@@ -3237,7 +3242,6 @@ async function showPage(page) {
   document.getElementById('selectorPage').style.display     = 'none';
   document.getElementById('myPicksPage').style.display      = 'none';
   document.getElementById('scoresPage').style.display       = 'none';
-  document.getElementById('standingsPage').style.display    = 'none';
   document.getElementById('adminPage').style.display        = 'none';
   document.getElementById('weeklyPicksPage').style.display  = 'none';
   document.getElementById('resultsPage').style.display      = 'none';
@@ -3251,7 +3255,6 @@ async function showPage(page) {
   document.getElementById('navMyPicks').classList.remove('active');
   document.getElementById('navScores').classList.remove('active');
   document.getElementById('navNbaScores').classList.remove('active');
-  document.getElementById('navStandings').classList.remove('active');
   document.getElementById('navWeeklyPicks').classList.remove('active');
   document.getElementById('navResults').classList.remove('active');
   document.getElementById('navLeaderboard').classList.remove('active');
@@ -3298,12 +3301,6 @@ async function showPage(page) {
     p.classList.remove('fade-in'); void p.offsetWidth; p.classList.add('fade-in');
     document.getElementById('navScores').classList.add('active');
     initScores();
-  } else if (page === 'standings') {
-    const p = document.getElementById('standingsPage');
-    p.style.display = 'flex';
-    p.classList.remove('fade-in'); void p.offsetWidth; p.classList.add('fade-in');
-    document.getElementById('navStandings').classList.add('active');
-    initStandings();
   } else if (page === 'admin') {
     loadPendingRequests();
     loadMissingPicks();
@@ -3354,7 +3351,6 @@ function logout() {
   document.getElementById('selectorPage').style.display    = 'none';
   document.getElementById('myPicksPage').style.display     = 'none';
   document.getElementById('scoresPage').style.display      = 'none';
-  document.getElementById('standingsPage').style.display   = 'none';
   document.getElementById('adminPage').style.display       = 'none';
   document.getElementById('weeklyPicksPage').style.display = 'none';
   document.getElementById('resultsPage').style.display     = 'none';
@@ -4438,6 +4434,7 @@ function switchScoresTab(tab) {
     fetchMlbScores();
     mlbScoresRefreshTimer = setInterval(fetchMlbScores, 15 * 60 * 1000);
   }
+  if (!standingsCache[tab]) fetchStandings(tab);
 }
 
 // ── NBA Scores ──
@@ -5157,30 +5154,13 @@ const STANDINGS_COLS = {
   ]
 };
 
-let standingsCache   = {};
-let standingsActiveSport = 'nfl';
-
-function initStandings() {
-  switchStandingsTab(standingsActiveSport);
-}
-
-function switchStandingsTab(sport) {
-  standingsActiveSport = sport;
-  ['nfl','nba','mlb'].forEach(s => {
-    document.getElementById('standingsTab' + s.charAt(0).toUpperCase() + s.slice(1))
-      .classList.toggle('active', s === sport);
-  });
-  if (standingsCache[sport]) {
-    renderStandings(sport, standingsCache[sport]);
-  } else {
-    fetchStandings(sport);
-  }
-}
+let standingsCache = {};
 
 async function fetchStandings(sport) {
-  const loadingEl = document.getElementById('standingsLoading');
-  const errorEl   = document.getElementById('standingsError');
-  const contentEl = document.getElementById('standingsContent');
+  const loadingEl = document.getElementById(sport + 'StandingsLoading');
+  const errorEl   = document.getElementById(sport + 'StandingsError');
+  const contentEl = document.getElementById(sport + 'StandingsContent');
+  if (!loadingEl) return;
   loadingEl.style.display = 'block';
   errorEl.style.display   = 'none';
   contentEl.innerHTML     = '';
@@ -5206,8 +5186,9 @@ function getStatVal(stats, key) {
 }
 
 function renderStandings(sport, data) {
-  const loadingEl = document.getElementById('standingsLoading');
-  const contentEl = document.getElementById('standingsContent');
+  const loadingEl = document.getElementById(sport + 'StandingsLoading');
+  const contentEl = document.getElementById(sport + 'StandingsContent');
+  if (!contentEl) return;
   loadingEl.style.display = 'none';
   contentEl.innerHTML = '';
 
@@ -6909,8 +6890,8 @@ document.addEventListener('keydown', function(e) {
 <div class="page with-nav" id="scoresPage">
   <div class="container" style="max-width:860px;">
     <div class="page-header">
-      <div class="page-title">Scores</div>
-      <div class="page-subtitle">Live &amp; Final Results</div>
+      <div class="page-title">Scores &amp; Standings</div>
+      <div class="page-subtitle">Live Results &amp; Season Records</div>
       <div class="page-divider"></div>
     </div>
 
@@ -6945,6 +6926,10 @@ document.addEventListener('keydown', function(e) {
       <div id="scoresLoading" class="picks-loading"><div class="loading-spinner"></div><p>Loading scores…</p></div>
       <div id="scoresError" class="picks-error" style="display:none;"></div>
       <div id="scoresGrid"></div>
+      <div class="standings-section-divider">Standings</div>
+      <div id="nflStandingsLoading" class="picks-loading" style="display:none;"><div class="loading-spinner"></div><p>Loading standings…</p></div>
+      <div id="nflStandingsError" class="picks-error" style="display:none;"></div>
+      <div id="nflStandingsContent"></div>
     </div>
 
     <!-- NBA Panel -->
@@ -6960,6 +6945,10 @@ document.addEventListener('keydown', function(e) {
       <div id="nbaScoresLoading" class="picks-loading"><div class="loading-spinner"></div><p>Loading scores…</p></div>
       <div id="nbaScoresError" class="picks-error" style="display:none;"></div>
       <div id="nbaScoresGrid"></div>
+      <div class="standings-section-divider">Standings</div>
+      <div id="nbaStandingsLoading" class="picks-loading" style="display:none;"><div class="loading-spinner"></div><p>Loading standings…</p></div>
+      <div id="nbaStandingsError" class="picks-error" style="display:none;"></div>
+      <div id="nbaStandingsContent"></div>
     </div>
 
     <!-- MLB Panel -->
@@ -6975,31 +6964,12 @@ document.addEventListener('keydown', function(e) {
       <div id="mlbScoresLoading" class="picks-loading"><div class="loading-spinner"></div><p>Loading scores…</p></div>
       <div id="mlbScoresError" class="picks-error" style="display:none;"></div>
       <div id="mlbScoresGrid"></div>
+      <div class="standings-section-divider">Standings</div>
+      <div id="mlbStandingsLoading" class="picks-loading" style="display:none;"><div class="loading-spinner"></div><p>Loading standings…</p></div>
+      <div id="mlbStandingsError" class="picks-error" style="display:none;"></div>
+      <div id="mlbStandingsContent"></div>
     </div>
 
-  </div>
-</div>
-
-
-<!-- ═══ STANDINGS PAGE ═══ -->
-<div class="page with-nav" id="standingsPage">
-  <div class="container" style="max-width:860px;">
-    <div class="page-header">
-      <div class="page-title">Standings</div>
-      <div class="page-subtitle">Current Season Records</div>
-      <div class="page-divider"></div>
-    </div>
-    <div class="standings-tabs">
-      <button class="standings-tab active" id="standingsTabNfl" onclick="switchStandingsTab('nfl')">NFL</button>
-      <button class="standings-tab" id="standingsTabNba" onclick="switchStandingsTab('nba')">NBA</button>
-      <button class="standings-tab" id="standingsTabMlb" onclick="switchStandingsTab('mlb')">MLB</button>
-    </div>
-    <div id="standingsLoading" class="picks-loading">
-      <div class="loading-spinner"></div>
-      <p>Loading standings…</p>
-    </div>
-    <div id="standingsError" class="picks-error" style="display:none;"></div>
-    <div id="standingsContent"></div>
   </div>
 </div>
 
