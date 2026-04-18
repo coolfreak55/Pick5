@@ -3357,8 +3357,7 @@ async function showPage(page) {
   } else if (page === 'admin') {
     loadPendingRequests();
     loadMissingPicks();
-    loadAdminNbaStatus();
-    loadAdminMlbStatus();
+    loadAdminScoresTabStatus();
     const p = document.getElementById('adminPage');
     p.style.display = 'flex';
     p.classList.remove('fade-in'); void p.offsetWidth; p.classList.add('fade-in');
@@ -5351,44 +5350,28 @@ async function loadAdminWeekOverride() {
   loadAdminSpreadsWeek();
 }
 
-async function loadAdminNbaStatus() {
+async function loadAdminScoresTabStatus() {
   try {
-    const visible = window.fbGetNbaVisible ? await window.fbGetNbaVisible() : false;
-    const cb = document.getElementById('nbaVisibleToggle');
-    const lbl = document.getElementById('nbaVisibleLabel');
-    if (cb) cb.checked = !!visible;
-    if (lbl) lbl.textContent = visible ? 'NBA Scores visible to all users' : 'NBA Scores hidden from regular users';
+    const nbaVisible = window.fbGetNbaVisible ? await window.fbGetNbaVisible() : false;
+    const mlbVisible = window.fbGetMlbVisible ? await window.fbGetMlbVisible() : false;
+    const visible = nbaVisible || mlbVisible;
+    const cb  = document.getElementById('scoresTabsVisibleToggle');
+    const lbl = document.getElementById('scoresTabsVisibleLabel');
+    if (cb)  cb.checked = !!visible;
+    if (lbl) lbl.textContent = visible ? 'NBA & MLB Scores visible to all users' : 'NBA & MLB Scores hidden from regular users';
   } catch(e) {}
 }
 
-async function handleNbaToggle(checked) {
-  const lbl = document.getElementById('nbaVisibleLabel');
+async function handleScoresTabToggle(checked) {
+  const lbl = document.getElementById('scoresTabsVisibleLabel');
   if (lbl) lbl.textContent = 'Saving…';
   try {
-    await window.fbSaveNbaVisible(checked);
-    if (lbl) lbl.textContent = checked ? 'NBA Scores visible to all users' : 'NBA Scores hidden from regular users';
+    await Promise.all([
+      window.fbSaveNbaVisible(checked),
+      window.fbSaveMlbVisible(checked)
+    ]);
+    if (lbl) lbl.textContent = checked ? 'NBA & MLB Scores visible to all users' : 'NBA & MLB Scores hidden from regular users';
     document.getElementById('nbaTab').style.display = checked ? '' : 'none';
-  } catch(e) {
-    if (lbl) lbl.textContent = 'Error saving — try again';
-  }
-}
-
-async function loadAdminMlbStatus() {
-  try {
-    const visible = window.fbGetMlbVisible ? await window.fbGetMlbVisible() : false;
-    const cb = document.getElementById('mlbVisibleToggle');
-    const lbl = document.getElementById('mlbVisibleLabel');
-    if (cb) cb.checked = !!visible;
-    if (lbl) lbl.textContent = visible ? 'MLB Scores visible to all users' : 'MLB Scores hidden from regular users';
-  } catch(e) {}
-}
-
-async function handleMlbToggle(checked) {
-  const lbl = document.getElementById('mlbVisibleLabel');
-  if (lbl) lbl.textContent = 'Saving…';
-  try {
-    await window.fbSaveMlbVisible(checked);
-    if (lbl) lbl.textContent = checked ? 'MLB Scores visible to all users' : 'MLB Scores hidden from regular users';
     document.getElementById('mlbTab').style.display = checked ? '' : 'none';
   } catch(e) {
     if (lbl) lbl.textContent = 'Error saving — try again';
@@ -7102,28 +7085,15 @@ document.addEventListener('keydown', function(e) {
       <div class="admin-status" id="adminSpreadsStatus"></div>
     </div>
 
-    <!-- NBA Scores Visibility -->
+    <!-- NBA + MLB Scores Visibility -->
     <div class="admin-card">
-      <div class="admin-card-title">🏀 NBA Scores</div>
-      <p class="admin-card-desc">Toggle whether the NBA tab on the Scores page is visible to regular users. Admins can always access it.</p>
+      <div class="admin-card-title">🏀⚾ NBA &amp; MLB Scores</div>
+      <p class="admin-card-desc">Toggle whether the NBA and MLB tabs on the Scores page are visible to regular users. Admins can always access them.</p>
       <div style="display:flex;align-items:center;gap:14px;margin-top:12px;">
         <label style="display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;">
-          <input type="checkbox" id="nbaVisibleToggle" onchange="handleNbaToggle(this.checked)"
+          <input type="checkbox" id="scoresTabsVisibleToggle" onchange="handleScoresTabToggle(this.checked)"
             style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer;" />
-          <span style="font-size:14px;color:var(--text);font-weight:600;" id="nbaVisibleLabel">Loading…</span>
-        </label>
-      </div>
-    </div>
-
-    <!-- MLB Scores Visibility -->
-    <div class="admin-card">
-      <div class="admin-card-title">⚾ MLB Scores</div>
-      <p class="admin-card-desc">Toggle whether the MLB tab on the Scores page is visible to regular users. Admins can always access it.</p>
-      <div style="display:flex;align-items:center;gap:14px;margin-top:12px;">
-        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;">
-          <input type="checkbox" id="mlbVisibleToggle" onchange="handleMlbToggle(this.checked)"
-            style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer;" />
-          <span style="font-size:14px;color:var(--text);font-weight:600;" id="mlbVisibleLabel">Loading…</span>
+          <span style="font-size:14px;color:var(--text);font-weight:600;" id="scoresTabsVisibleLabel">Loading…</span>
         </label>
       </div>
     </div>
