@@ -2090,6 +2090,7 @@
   .lb-row {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 16px;
     background: var(--surface);
     border: 1px solid var(--border);
@@ -2122,13 +2123,16 @@
   .lb-rank.loser  { color: var(--error); }
   .lb-rank.other  { color: var(--muted); font-size: 20px; }
 
-  .lb-info { flex: 1; }
+  .lb-info { flex: 1; min-width: 0; }
   .lb-name {
     font-family: 'Bebas Neue', sans-serif;
     font-size: 22px;
     letter-spacing: 0.08em;
     color: var(--text);
     line-height: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .lb-email {
     font-size: 12px;
@@ -2142,6 +2146,7 @@
     gap: 20px;
     align-items: center;
     flex-shrink: 0;
+    flex-wrap: wrap;
     text-align: right;
   }
   .lb-stat { text-align: center; }
