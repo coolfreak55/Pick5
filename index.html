@@ -1774,7 +1774,7 @@
       margin-top: 4px;
     }
     .wp-table td:nth-child(7) { width: 100%; padding-top: 6px; border-top: 1px solid var(--border); }
-    .wp-table td:nth-child(8) { font-size: 12px; }
+    .wp-table td:nth-child(8) { font-size: 14px; }
     .wp-table td:nth-child(7)::before { content: 'Record: '; color: var(--muted); font-size: 11px; letter-spacing: 0.08em; }
     .wp-table td:nth-child(8)::before { content: 'Tiebreaker: '; color: var(--muted); font-size: 11px; letter-spacing: 0.08em; }
   }
@@ -6752,7 +6752,7 @@ async function loadWeeklyPicks() {
           const diff = Math.abs(parseInt(doc.tiebreaker) - actualTotal);
           tbTd.innerHTML = '<strong>' + doc.tiebreaker + '</strong> <span class="' + (diff === 0 ? 'tb-diff-exact' : 'tb-diff-normal') + '">(' + (diff === 0 ? 'exact!' : '+' + diff) + ')</span>';
         } else { tbTd.innerHTML = '<strong>' + doc.tiebreaker + '</strong>'; }
-        tbTd.style.fontSize = '12px'; tbTd.style.color = 'var(--text)';
+        tbTd.style.fontSize = '14px'; tbTd.style.color = 'var(--text)';
       } else { tbTd.textContent = '—'; tbTd.style.color = 'var(--muted)'; }
       tr.appendChild(tbTd);
 
