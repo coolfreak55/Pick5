@@ -1234,6 +1234,34 @@
     pointer-events: none;
   }
 
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 72px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #1e2530;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 15px;
+    letter-spacing: 0.06em;
+    color: var(--text);
+    z-index: 9999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s, transform 0.25s;
+    white-space: nowrap;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  .toast.success { border-color: #4caf7d; color: #4caf7d; }
+  .toast.error   { border-color: #e05555; color: #e05555; }
+  [data-theme="light"] .toast { background: #fff; }
+
   /* ── ADMIN PAGE ── */
   .admin-corner-btn {
     font-family: 'Bebas Neue', sans-serif;
@@ -3710,6 +3738,18 @@ function escHtml(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+let _toastTimer = null;
+function showToast(msg, type) {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'toast' + (type ? ' ' + type : '');
+  void el.offsetWidth;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(function() { el.classList.remove('show'); }, 3000);
+}
+
 // ── Picks: toggle, render, counter ──
 function togglePick(abbr, gameIdx) {
   const card      = document.querySelector('.spread-card[data-game="' + gameIdx + '"]');
@@ -3857,15 +3897,15 @@ async function submitSpreadsPicks() {
     await Promise.all([fbPromise, sheetPromise]);
     btn.textContent = 'Picks Saved ✓';
     btn.style.background = 'linear-gradient(135deg, #4caf7d 0%, #2e7d52 100%)';
-    status.textContent = 'Your picks have been saved!';
-    status.style.color = '#4caf7d';
+    status.textContent = '';
+    showToast('Picks saved!', 'success');
     setTimeout(() => {
       btn.textContent = 'Lock In Picks';
       btn.style.background = '';
       btn.disabled = selectedPicks.length === 0;
-      status.textContent = '';
     }, 3000);
   } catch(err) {
+    showToast('Save failed — please retry', 'error');
     btn.textContent = 'Save Failed — Retry';
     btn.style.background = 'linear-gradient(135deg, #e05555 0%, #a03030 100%)';
     btn.disabled = false;
@@ -4249,6 +4289,12 @@ async function loadMyPicks() {
           recEl.style.cssText = 'margin-top:8px;font-size:20px;';
           recEl.innerHTML = '<span class="wins">' + wins + 'W</span> <span class="losses">' + losses + 'L</span>' +
             (pending > 0 ? ' <span class="pending">(' + pending + ' pending)</span>' : '');
+          sub.appendChild(recEl);
+        } else if (pending > 0) {
+          const recEl = document.createElement('div');
+          recEl.className = 'wp-record';
+          recEl.style.cssText = 'margin-top:8px;font-size:14px;';
+          recEl.innerHTML = '<span class="pending">All games pending</span>';
           sub.appendChild(recEl);
         }
 
@@ -7268,6 +7314,7 @@ document.addEventListener('keydown', function(e) {
 </div>
 
 <div class="version-badge">v1.0.9</div>
+<div class="toast" id="toast"></div>
 
 <!-- ═══ GAME DETAIL MODAL ═══ -->
 <div id="gameDetailOverlay" style="display:none;" onclick="if(event.target===this)closeGameModal()">
