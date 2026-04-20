@@ -783,6 +783,16 @@
     text-align: center;
     text-transform: uppercase;
   }
+  .game-series-summary {
+    margin-top: 8px;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    text-align: center;
+    text-transform: uppercase;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 600;
+  }
 
   .scores-empty {
     text-align: center;
@@ -4863,6 +4873,14 @@ async function fetchNbaScores() {
         timeInfo.className = 'game-time-info';
         timeInfo.textContent = isPre ? gameTimeStr : statusStr;
         cardBody.appendChild(timeInfo);
+      }
+
+      const seriesSummary = comp.series && comp.series.summary;
+      if (seriesSummary) {
+        const seriesEl = document.createElement('div');
+        seriesEl.className = 'game-series-summary';
+        seriesEl.textContent = seriesSummary;
+        cardBody.appendChild(seriesEl);
       }
 
       card.appendChild(cardHeader); card.appendChild(cardBody);
