@@ -2753,9 +2753,45 @@
   .tt-reply-banner-cancel { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; padding: 0; line-height: 1; flex-shrink: 0; }
   .tt-reply-banner-cancel:hover { color: var(--text); }
 
+  /* ── PHILLIES STREAK BANNER ── */
+  #philliesStreakBar {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 52px;
+    z-index: 300;
+    align-items: center;
+    overflow: hidden;
+  }
+  #philliesStreakBar.win-streak  { background: linear-gradient(135deg, #002D72 0%, #001a4d 100%); }
+  #philliesStreakBar.loss-streak { background: linear-gradient(135deg, #E81828 0%, #8B0000 100%); }
+  .phillies-marquee-wrap { overflow: hidden; width: 100%; }
+  .phillies-marquee-inner {
+    display: inline-block;
+    white-space: nowrap;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 26px;
+    letter-spacing: 0.12em;
+    color: #fff;
+    animation: phillies-scroll 28s linear infinite;
+  }
+  @keyframes phillies-scroll {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  body.has-streak-bar #topNav { top: 52px; }
+  body.has-streak-bar .page.with-nav { padding-top: calc(52px + var(--nav-h) + 40px); }
+
 </style>
 </head>
 <body>
+
+<!-- ═══ PHILLIES STREAK BANNER ═══ -->
+<div id="philliesStreakBar">
+  <div class="phillies-marquee-wrap">
+    <div class="phillies-marquee-inner" id="philliesStreakMarquee"></div>
+  </div>
+</div>
 
 <!-- ═══ TOP NAV ═══ -->
 <nav id="topNav">
@@ -3341,6 +3377,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Show Phillies streak banner (fetched from ESPN)
+  fetchAndShowPhilliesStreak();
+
   // Auto-login if a remembered session exists
   const savedEmail = localStorage.getItem('pick5-session-email');
   const savedTeam  = localStorage.getItem('pick5-session-team');
@@ -3483,6 +3522,7 @@ async function showPage(page) {
     loadPendingRequests();
     loadMissingPicks();
     loadAdminScoresTabStatus();
+    loadAdminPhilliesStreak();
     const p = document.getElementById('adminPage');
     p.style.display = 'flex';
     p.classList.remove('fade-in'); void p.offsetWidth; p.classList.add('fade-in');
@@ -7341,6 +7381,17 @@ document.addEventListener('keydown', function(e) {
         </label>
       </div>
     </div>
+
+    <!-- Phillies Streak Banner -->
+    <div class="admin-card">
+      <div class="admin-card-title">⚾ Phillies Streak Banner</div>
+      <p class="admin-card-desc">Auto-fetched from ESPN on every page load. Shows a scrolling banner on all screens.</p>
+      <div style="margin-top:12px;font-size:15px;font-weight:600;color:var(--text);">Current streak: <span id="philliesStreakCurrent">—</span></div>
+      <div style="margin-top:14px;">
+        <button class="btn-submit" style="min-width:120px;" onclick="fetchAndShowPhilliesStreak(true)">Refresh Now</button>
+      </div>
+      <div class="admin-status" id="philliesStreakStatus" style="margin-top:10px;"></div>
+    </div>
   </div>
 </div>
 
@@ -7470,6 +7521,61 @@ document.addEventListener('keydown', function(e) {
 </div>
 
 
+
+<script>
+// ── Phillies Streak Banner (ESPN) ──
+async function fetchAndShowPhilliesStreak(fromAdmin) {
+  const status  = fromAdmin ? document.getElementById('philliesStreakStatus') : null;
+  const current = document.getElementById('philliesStreakCurrent');
+  if (status) { status.textContent = 'Fetching from ESPN…'; status.className = 'admin-status'; }
+  try {
+    const res  = await fetch('https://site.api.espn.com/apis/v2/sports/baseball/mlb/standings?region=us&lang=en', { cache: 'no-store' });
+    const data = await res.json();
+    let streakDisplay = null;
+    // Walk all division groups to find Phillies (team id 22)
+    const groups = data.children || [];
+    outer: for (const group of groups) {
+      const entries = (group.standings && group.standings.entries) || [];
+      for (const entry of entries) {
+        if (entry.team && entry.team.id === '22') {
+          const stat = (entry.stats || []).find(s => s.name === 'streak');
+          if (stat) streakDisplay = stat.displayValue; // e.g. "L9" or "W3"
+          break outer;
+        }
+      }
+    }
+    if (!streakDisplay) throw new Error('streak not found');
+    const wins  = streakDisplay.charAt(0).toUpperCase() === 'W';
+    const count = parseInt(streakDisplay.slice(1), 10) || 1;
+    showPhilliesStreakBar(wins ? 'W' : 'L', count);
+    if (current) current.textContent = streakDisplay;
+    if (status) { status.textContent = 'Updated.'; status.className = 'admin-status success'; setTimeout(() => { status.textContent = ''; status.className = 'admin-status'; }, 3000); }
+  } catch(e) {
+    if (status) { status.textContent = 'Could not fetch from ESPN.'; status.className = 'admin-status error'; }
+  }
+}
+
+function showPhilliesStreakBar(type, count) {
+  const bar   = document.getElementById('philliesStreakBar');
+  const inner = document.getElementById('philliesStreakMarquee');
+  if (!bar || !inner) return;
+  const wins  = type === 'W';
+  const noun  = wins
+    ? (count === 1 ? 'CONSECUTIVE WIN' : 'CONSECUTIVE WINS')
+    : (count === 1 ? 'CONSECUTIVE LOSS' : 'CONSECUTIVE LOSSES');
+  const emoji  = wins ? '⚾' : '🔴';
+  const streak = wins ? `W${count}` : `L${count}`;
+  const seg    = `  ${emoji}  PHILLIES  ·  ${streak}  ·  ${count} ${noun}  ·  `;
+  inner.textContent = seg.repeat(6);
+  bar.className = wins ? 'win-streak' : 'loss-streak';
+  bar.style.display = 'flex';
+  document.body.classList.add('has-streak-bar');
+}
+
+async function loadAdminPhilliesStreak() {
+  fetchAndShowPhilliesStreak(true);
+}
+</script>
 
 <script>
   // Auto-reload when a new deploy is detected (PWA update detection)
