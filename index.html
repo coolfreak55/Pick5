@@ -3007,7 +3007,7 @@
 </nav>
 <div id="utilityBar">
   <div class="utility-left">
-    <div class="version-badge">v1.6.5</div>
+    <div class="version-badge">v1.6.6</div>
     <div class="settings-btn-wrap">
       <button id="settingsBtn" onclick="toggleSettingsPanel()">⚙ Settings</button>
       <div id="settingsPanel" class="settings-panel">
@@ -3951,6 +3951,7 @@ async function showPage(page) {
     const p = document.getElementById('adminPage');
     p.style.display = 'flex';
     p.classList.remove('fade-in'); void p.offsetWidth; p.classList.add('fade-in');
+    initAdminCardCollapse(p);
     loadAdminWeekOverride();
   } else if (page === 'users') {
     const p = document.getElementById('usersPage');
@@ -6136,6 +6137,37 @@ function renderStandings(sport, data, year) {
   if (teamCount === 0) {
     contentEl.innerHTML = '<div class="scores-empty"><p>No standings available for this season yet.</p></div>';
   }
+}
+
+// ── Admin card collapse ──
+function initAdminCardCollapse(pageEl) {
+  (pageEl || document).querySelectorAll('.admin-card').forEach(function(card) {
+    if (card.dataset.collapseInit) return;
+    card.dataset.collapseInit = '1';
+    const titleEl = card.querySelector('.admin-card-title');
+    if (!titleEl) return;
+    const key = 'adminCardOpen_' + titleEl.textContent.trim().replace(/\W+/g, '_');
+    const body = document.createElement('div');
+    Array.from(card.children).slice(Array.from(card.children).indexOf(titleEl) + 1)
+      .forEach(function(c) { body.appendChild(c); });
+    card.appendChild(body);
+    const chevron = document.createElement('span');
+    chevron.style.cssText = 'font-size:13px;color:var(--subtext);margin-left:auto;padding-left:10px;transition:transform 0.2s;display:inline-block;';
+    chevron.textContent = '▾';
+    titleEl.style.cssText += ';cursor:pointer;display:flex;align-items:center;margin-bottom:0;';
+    titleEl.appendChild(chevron);
+    const isOpen = localStorage.getItem(key) === '1';
+    body.style.display = isOpen ? '' : 'none';
+    body.style.marginTop = isOpen ? '10px' : '0';
+    chevron.style.transform = isOpen ? '' : 'rotate(-90deg)';
+    titleEl.onclick = function() {
+      const nowOpen = body.style.display === 'none';
+      body.style.display = nowOpen ? '' : 'none';
+      body.style.marginTop = nowOpen ? '10px' : '0';
+      chevron.style.transform = nowOpen ? '' : 'rotate(-90deg)';
+      localStorage.setItem(key, nowOpen ? '1' : '0');
+    };
+  });
 }
 
 // ── Admin ──
