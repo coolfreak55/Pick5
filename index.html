@@ -3007,7 +3007,7 @@
 </nav>
 <div id="utilityBar">
   <div class="utility-left">
-    <div class="version-badge">v1.6.4</div>
+    <div class="version-badge">v1.6.5</div>
     <div class="settings-btn-wrap">
       <button id="settingsBtn" onclick="toggleSettingsPanel()">⚙ Settings</button>
       <div id="settingsPanel" class="settings-panel">
@@ -3238,6 +3238,10 @@
     <div class="field">
       <label>Phone Number</label>
       <input type="tel" id="requestPhone" placeholder="xxx-xxx-xxxx" maxlength="12" oninput="formatPhoneInput(this)" />
+    </div>
+    <div class="field">
+      <label>Who Recommended You? <span style="font-weight:400;color:var(--subtext);font-size:12px;">(optional)</span></label>
+      <input type="text" id="requestReferral" placeholder="e.g. John Smith" maxlength="100" />
     </div>
     <button class="btn-login" id="requestBtn" onclick="submitAccessRequest()">Submit Request</button>
     <div class="request-access-link" style="margin-top:12px;">
@@ -6282,6 +6286,7 @@ function openRequestAccess() {
   document.getElementById('requestPin').value = '';
   document.getElementById('requestTeamName').value = '';
   document.getElementById('requestPhone').value = '';
+  document.getElementById('requestReferral').value = '';
   document.getElementById('requestErrorMsg').classList.remove('show');
   document.getElementById('requestStatusMsg').textContent = '';
 }
@@ -6309,6 +6314,7 @@ async function submitAccessRequest() {
   const pin      = document.getElementById('requestPin').value.trim();
   const teamName = document.getElementById('requestTeamName').value.trim();
   const phone    = document.getElementById('requestPhone').value.trim();
+  const referral = document.getElementById('requestReferral').value.trim();
   const btn      = document.getElementById('requestBtn');
   const errEl    = document.getElementById('requestErrorMsg');
   const staEl    = document.getElementById('requestStatusMsg');
@@ -6382,7 +6388,7 @@ async function submitAccessRequest() {
 
     staEl.textContent = 'Submitting request…';
 
-    await fbSavePendingUser({ email, pin: String(pin), teamName, phone });
+    await fbSavePendingUser({ email, pin: String(pin), teamName, phone, ...(referral ? { referral } : {}) });
 
     staEl.textContent = '';
     btn.textContent = 'Request Sent ✓';
@@ -6718,7 +6724,7 @@ async function loadPendingRequests() {
     row.innerHTML =
       '<div class="pending-req-info">' +
         '<div class="pending-req-email">' + user.email + '</div>' +
-        '<div class="pending-req-meta">' + (user.teamName || '—') + ' &nbsp;·&nbsp; ' + (user.phone || '—') + (ts ? ' &nbsp;·&nbsp; ' + ts : '') + '</div>' +
+        '<div class="pending-req-meta">' + (user.teamName || '—') + ' &nbsp;·&nbsp; ' + (user.phone || '—') + (user.referral ? ' &nbsp;·&nbsp; referred by: ' + user.referral : '') + (ts ? ' &nbsp;·&nbsp; ' + ts : '') + '</div>' +
       '</div>' +
       '<div class="pending-req-actions">' +
         '<button class="btn-approve" id="approve-' + user.id + '" onclick="handleApprove(\'' + user.id + '\')">Approve</button>' +
